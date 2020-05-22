@@ -114,7 +114,7 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular channel
-	channelUUID := event.Headers.Get("Unique-ID")
+	channelUUID := event.Headers.Get("Unique-Id")
 	if listeners, ok := c.eventListeners[channelUUID]; ok {
 		for _, listener := range listeners {
 			go listener(event)
