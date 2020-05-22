@@ -45,6 +45,7 @@ func newConnection(c net.Conn) *Conn {
 		},
 		runningContext: runningContext,
 		stopFunc:       stop,
+		eventListeners: make(map[string]map[string]EventListener),
 	}
 	go instance.receiveLoop()
 	go instance.eventLoop()
