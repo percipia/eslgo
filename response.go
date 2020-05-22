@@ -45,8 +45,14 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 	return response, nil
 }
 
+// Helper to check response status, only used for Auth checking at the moment
 func (r RawResponse) IsOk() bool {
 	return strings.HasPrefix(r.Headers.Get("Reply-Text"), "+OK")
+}
+
+// Helper to get the channel UUID
+func (r RawResponse) ChannelUUID() string {
+	return r.Headers.Get("Unique-ID")
 }
 
 // Implement the Stringer interface for pretty printing
