@@ -1,5 +1,5 @@
 package command
 
 type Command interface {
-	String() string
+	BuildMessage() string
 }

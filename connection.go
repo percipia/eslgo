@@ -80,7 +80,7 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = c.conn.SetWriteDeadline(deadline)
 	}
-	_, err := c.conn.Write([]byte(command.String() + EndOfMessage))
+	_, err := c.conn.Write([]byte(command.BuildMessage() + EndOfMessage))
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,6 @@ func (c *Conn) Close() {
 }
 
 func (c *Conn) callEventListener(event *Event) {
-	channelUUID := event.Headers.Get("Unique-ID")
 	c.eventListenerLock.RLock()
 	defer c.eventListenerLock.RUnlock()
 
@@ -114,7 +113,16 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular channel
+	channelUUID := event.Headers.Get("Unique-ID")
 	if listeners, ok := c.eventListeners[channelUUID]; ok {
+		for _, listener := range listeners {
+			go listener(event)
+		}
+	}
+
+	// Next call any listeners for a particular application
+	appUUID := event.Headers.Get("Application-UUID")
+	if listeners, ok := c.eventListeners[appUUID]; ok {
 		for _, listener := range listeners {
 			go listener(event)
 		}

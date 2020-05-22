@@ -8,7 +8,7 @@ type API struct {
 	Background bool
 }
 
-func (api API) String() string {
+func (api API) BuildMessage() string {
 	if api.Background {
 		return fmt.Sprintf("bgapi %s %s", api.Command, api.Arguments)
 	}

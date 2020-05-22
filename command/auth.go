@@ -7,7 +7,7 @@ type Auth struct {
 	Password string
 }
 
-func (auth Auth) String() string {
+func (auth Auth) BuildMessage() string {
 	if len(auth.User) > 0 {
 		return fmt.Sprintf("userauth %s:%s", auth.User, auth.Password)
 	}

@@ -1,7 +1,7 @@
 package command
 
-type Exit struct {}
+type Exit struct{}
 
-func (Exit) String() string {
+func (Exit) BuildMessage() string {
 	return "exit"
 }

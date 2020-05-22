@@ -1,7 +1,7 @@
 package command
 
-type Connect struct {}
+type Connect struct{}
 
-func (Connect) String() string {
+func (Connect) BuildMessage() string {
 	return "connect"
 }
