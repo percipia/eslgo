@@ -2,6 +2,7 @@ package call
 
 import (
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
+	"net/textproto"
 )
 
 type NoMedia struct {
@@ -14,6 +15,7 @@ type NoMedia struct {
 func (n NoMedia) BuildMessage() string {
 	sendMsg := command.SendMessage{
 		UUID:    n.UUID,
+		Headers: make(textproto.MIMEHeader),
 		Sync:    n.Sync,
 		SyncPri: n.SyncPri,
 	}

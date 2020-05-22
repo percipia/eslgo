@@ -3,6 +3,7 @@ package call
 import (
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
 	"net"
+	"net/textproto"
 )
 
 /*
@@ -23,6 +24,7 @@ type Unicast struct {
 func (u Unicast) BuildMessage() string {
 	sendMsg := command.SendMessage{
 		UUID:    u.UUID,
+		Headers: make(textproto.MIMEHeader),
 		Sync:    u.Sync,
 		SyncPri: u.SyncPri,
 	}

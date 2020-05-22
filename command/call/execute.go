@@ -3,6 +3,7 @@ package call
 import (
 	"fmt"
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
+	"net/textproto"
 	"strconv"
 )
 
@@ -45,6 +46,7 @@ func (e *Execute) BuildMessage() string {
 	}
 	sendMsg := command.SendMessage{
 		UUID:    e.UUID,
+		Headers: make(textproto.MIMEHeader),
 		Sync:    e.Sync,
 		SyncPri: e.SyncPri,
 	}

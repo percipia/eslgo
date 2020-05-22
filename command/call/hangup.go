@@ -2,6 +2,7 @@ package call
 
 import (
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
+	"net/textproto"
 )
 
 type Hangup struct {
@@ -14,6 +15,7 @@ type Hangup struct {
 func (h Hangup) BuildMessage() string {
 	sendMsg := command.SendMessage{
 		UUID:    h.UUID,
+		Headers: make(textproto.MIMEHeader),
 		Sync:    h.Sync,
 		SyncPri: h.SyncPri,
 	}

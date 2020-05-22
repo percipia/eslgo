@@ -49,11 +49,19 @@ func readPlainEvent(body []byte) (*Event, error) {
 }
 
 func readXMLEvent(body []byte) (*Event, error) {
-	return &Event{}, nil
+	return &Event{
+		Headers: make(textproto.MIMEHeader),
+	}, nil
 }
 
 func readJSONEvent(body []byte) (*Event, error) {
-	return &Event{}, nil
+	return &Event{
+		Headers: make(textproto.MIMEHeader),
+	}, nil
+}
+
+func (e Event) GetName() string {
+	return e.Headers.Get("Event-Name")
 }
 
 // Implement the Stringer interface for pretty printing (%v)

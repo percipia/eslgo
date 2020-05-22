@@ -16,6 +16,9 @@ type SendMessage struct {
 }
 
 func (s *SendMessage) BuildMessage() string {
+	if s.Headers == nil {
+		s.Headers = make(textproto.MIMEHeader)
+	}
 	// Waits for this event to finish before continuing even in async mode
 	if s.Sync {
 		s.Headers.Set("event-lock", "true")
