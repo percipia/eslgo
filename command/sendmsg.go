@@ -38,6 +38,9 @@ func (s *SendMessage) BuildMessage() string {
 	// Format the headers
 	var headers strings.Builder
 	for key, values := range s.Headers {
+		if headers.Len() > 0 {
+			headers.WriteString("\r\n")
+		}
 		for _, value := range values {
 			headers.WriteString(key)
 			headers.WriteString(": ")
