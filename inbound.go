@@ -15,18 +15,17 @@ func Dial(address, password string) (*Conn, error) {
 	}
 	connection := newConnection(c)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	response, err := connection.sendCommand(ctx, command.Auth{Password: "ClueCon"})
+	response, err := connection.SendCommand(ctx, command.Auth{Password: "ClueCon"})
 	if err != nil {
 		return nil, err
 	}
 	if !response.IsOk() {
 		// Try to gracefully disconnect
-		_, _ = connection.sendCommand(ctx, command.Exit{})
+		_, _ = connection.SendCommand(ctx, command.Exit{})
 		return nil, errors.New("invalid authentication credentials")
 	}
 
 	return connection, nil
 }
-

@@ -1,6 +1,7 @@
 package freeswitchesl
 
 import (
+	"fmt"
 	"io"
 	"net/textproto"
 	"strconv"
@@ -29,7 +30,7 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 		Headers: header,
 	}
 
-	if contentLength := header.Get("Content-Length"); len(contentLength) > 0  {
+	if contentLength := header.Get("Content-Length"); len(contentLength) > 0 {
 		length, err := strconv.Atoi(contentLength)
 		if err != nil {
 			return response, err
@@ -46,4 +47,19 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 
 func (r RawResponse) IsOk() bool {
 	return strings.HasPrefix(r.Headers.Get("Reply-Text"), "+OK")
+}
+
+// Implement the Stringer interface for pretty printing
+func (r RawResponse) String() string {
+	var builder strings.Builder
+	for key, values := range r.Headers {
+		builder.WriteString(fmt.Sprintf("%s: %#v\n", key, values))
+	}
+	builder.Write(r.Body)
+	return builder.String()
+}
+
+// Implement the GoStringer interface for pretty printing (%#v)
+func (r RawResponse) GoString() string {
+	return r.String()
 }

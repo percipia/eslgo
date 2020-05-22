@@ -37,8 +37,8 @@ func ListenAndServe(address string, handler OutboundHandler) error {
 }
 
 func (c *Conn) outboundHandle(handler OutboundHandler) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
-	response, err := c.sendCommand(ctx, command.Connect{})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	response, err := c.SendCommand(ctx, command.Connect{})
 	cancel()
 	if err != nil {
 		log.Printf("Error connecting to %s error %s", c.conn.RemoteAddr().String(), err.Error())

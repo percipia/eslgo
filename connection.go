@@ -3,7 +3,7 @@ package freeswitchesl
 import (
 	"bufio"
 	"context"
-	"errors"
+	"github.com/google/uuid"
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
 	"log"
 	"net"
@@ -12,14 +12,16 @@ import (
 	"time"
 )
 
-type Conn struct{
-	conn             net.Conn
-	reader           *bufio.Reader
-	header           *textproto.Reader
-	writeLock		 sync.Mutex
-	runningContext   context.Context
-	stopFunc         func()
-	responseChannels map[string]chan *RawResponse
+type Conn struct {
+	conn              net.Conn
+	reader            *bufio.Reader
+	header            *textproto.Reader
+	writeLock         sync.Mutex
+	runningContext    context.Context
+	stopFunc          func()
+	responseChannels  map[string]chan *RawResponse
+	eventListenerLock sync.RWMutex
+	eventListeners    map[string]map[string]EventListener
 }
 
 const EndOfMessage = "\r\n\r\n"
@@ -42,18 +44,36 @@ func newConnection(c net.Conn) *Conn {
 			TypeEventJSON:   make(chan *RawResponse),
 		},
 		runningContext: runningContext,
-		stopFunc: stop,
+		stopFunc:       stop,
 	}
 	go instance.receiveLoop()
+	go instance.eventLoop()
 	return instance
 }
 
-func (c *Conn) Close() {
-	c.stopFunc()
-	_ = c.conn.Close()
+func (c *Conn) RegisterEventListener(channelUUID string, listener EventListener) string {
+	c.eventListenerLock.Lock()
+	defer c.eventListenerLock.Unlock()
+
+	id := uuid.New().String()
+	if _, ok := c.eventListeners[channelUUID]; ok {
+		c.eventListeners[channelUUID][id] = listener
+	} else {
+		c.eventListeners[channelUUID] = map[string]EventListener{id: listener}
+	}
+	return id
 }
 
-func (c *Conn) sendCommand(ctx context.Context, command command.Command) (*RawResponse, error) {
+func (c *Conn) RemoveEventListener(channelUUID string, id string) {
+	c.eventListenerLock.Lock()
+	defer c.eventListenerLock.Unlock()
+
+	if listeners, ok := c.eventListeners[channelUUID]; ok {
+		delete(listeners, id)
+	}
+}
+
+func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawResponse, error) {
 	c.writeLock.Lock()
 	defer c.writeLock.Unlock()
 
@@ -64,33 +84,64 @@ func (c *Conn) sendCommand(ctx context.Context, command command.Command) (*RawRe
 	if err != nil {
 		return nil, err
 	}
-	return c.waitFor(ctx, TypeReply)
+
+	// Get response
+	select {
+	case response := <-c.responseChannels[TypeReply]:
+		return response, nil
+	case response := <-c.responseChannels[TypeAPIResponse]:
+		return response, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
-func (c *Conn) waitFor(ctx context.Context, responseType string) (*RawResponse, error) {
-	if responseChan, ok := c.responseChannels[responseType]; ok {
-		select {
-		case response := <- responseChan:
-			return response, nil
-		case <- ctx.Done():
-			return nil, ctx.Err()
+func (c *Conn) Close() {
+	c.stopFunc()
+	_ = c.conn.Close()
+}
+
+func (c *Conn) callEventListener(event *Event) {
+	channelUUID := event.Headers.Get("Unique-ID")
+	c.eventListenerLock.RLock()
+	defer c.eventListenerLock.RUnlock()
+
+	// First check if there are any general event listener
+	if listeners, ok := c.eventListeners[EventListenAll]; ok {
+		for _, listener := range listeners {
+			go listener(event)
 		}
 	}
-	return nil, errors.New("no such response content type")
+
+	// Next call any listeners for a particular channel
+	if listeners, ok := c.eventListeners[channelUUID]; ok {
+		for _, listener := range listeners {
+			go listener(event)
+		}
+	}
 }
 
 func (c *Conn) eventLoop() {
 	for {
-		var raw *RawResponse
+		var event *Event
+		var err error
 		select {
-		case raw = <- c.responseChannels[TypeEventPlain]:
-		case raw = <- c.responseChannels[TypeEventXML]:
-		case raw = <- c.responseChannels[TypeEventJSON]:
-		case <- c.runningContext.Done():
+		case raw := <-c.responseChannels[TypeEventPlain]:
+			event, err = readPlainEvent(raw.Body)
+		case raw := <-c.responseChannels[TypeEventXML]:
+			event, err = readXMLEvent(raw.Body)
+		case raw := <-c.responseChannels[TypeEventJSON]:
+			event, err = readJSONEvent(raw.Body)
+		case <-c.runningContext.Done():
 			return
 		}
 
-		log.Printf("Event %s\n", string(raw.Body))
+		if err != nil {
+			log.Printf("Error parsing event\n%s\n", err.Error())
+			continue
+		}
+
+		c.callEventListener(event)
 	}
 }
 
@@ -102,13 +153,13 @@ func (c *Conn) receiveLoop() {
 		}
 
 		if responseChan, ok := c.responseChannels[response.Headers.Get("Content-Type")]; ok {
-			ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			select {
 			case responseChan <- response:
-			case <- c.runningContext.Done():
+			case <-c.runningContext.Done():
 				return
-			case <- ctx.Done():
-				log.Printf("No one to handle response %#v\n", response)
+			case <-ctx.Done():
+				log.Printf("No one to handle response %v\n", response)
 			}
 			cancel()
 		}
