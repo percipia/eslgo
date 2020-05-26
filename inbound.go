@@ -13,7 +13,7 @@ func Dial(address, password string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	connection := newConnection(c)
+	connection := newConnection(c, false)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

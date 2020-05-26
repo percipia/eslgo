@@ -13,6 +13,11 @@ type Event struct {
 	Listen []string
 }
 
+type MyEvents struct {
+	Format string
+	UUID   string
+}
+
 type DisableEvents struct{}
 
 // The divert_events command is available to allow events that an embedded script would expect to get in the inputcallback to be diverted to the event socket.
@@ -31,7 +36,15 @@ func (e Event) BuildMessage() string {
 	if e.Ignore {
 		prefix = "nix"
 	}
-	return fmt.Sprintf("%sevent %s, %s", prefix, e.Format, strings.Join(e.Listen, " "))
+	return fmt.Sprintf("%sevent %s %s", prefix, e.Format, strings.Join(e.Listen, " "))
+}
+
+func (m MyEvents) BuildMessage() string {
+	if len(m.UUID) > 0 {
+		return fmt.Sprintf("myevents %s %s", m.Format, m.UUID)
+
+	}
+	return fmt.Sprintf("myevents %s", m.Format)
 }
 
 func (DisableEvents) BuildMessage() string {

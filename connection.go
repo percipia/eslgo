@@ -22,11 +22,12 @@ type Conn struct {
 	responseChannels  map[string]chan *RawResponse
 	eventListenerLock sync.RWMutex
 	eventListeners    map[string]map[string]EventListener
+	outbound          bool
 }
 
 const EndOfMessage = "\r\n\r\n"
 
-func newConnection(c net.Conn) *Conn {
+func newConnection(c net.Conn, outbound bool) *Conn {
 	reader := bufio.NewReader(c)
 	header := textproto.NewReader(reader)
 
@@ -46,6 +47,7 @@ func newConnection(c net.Conn) *Conn {
 		runningContext: runningContext,
 		stopFunc:       stop,
 		eventListeners: make(map[string]map[string]EventListener),
+		outbound:       outbound,
 	}
 	go instance.receiveLoop()
 	go instance.eventLoop()
@@ -166,6 +168,7 @@ func (c *Conn) receiveLoop() {
 			select {
 			case responseChan <- response:
 			case <-c.runningContext.Done():
+				cancel()
 				return
 			case <-ctx.Done():
 				log.Printf("No one to handle response %v\n", response)
