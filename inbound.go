@@ -2,30 +2,55 @@ package freeswitchesl
 
 import (
 	"context"
-	"errors"
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
+	"log"
 	"net"
-	"time"
 )
 
-func Dial(address, password string) (*Conn, error) {
+func Dial(address, password string, onDisconnect func()) (*Conn, error) {
 	c, err := net.Dial("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 	connection := newConnection(c, false)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	response, err := connection.SendCommand(ctx, command.Auth{Password: password})
-	if err != nil {
-		return nil, err
-	}
-	if !response.IsOk() {
-		// Try to gracefully disconnect
-		_, _ = connection.SendCommand(ctx, command.Exit{})
-		return nil, errors.New("invalid authentication credentials")
-	}
+	// Inbound only handlers
+	go connection.authLoop(command.Auth{Password: password})
+	go connection.disconnectLoop(onDisconnect)
 
 	return connection, nil
+}
+
+func (c *Conn) disconnectLoop(onDisconnect func()) {
+	select {
+	case <-c.responseChannels[TypeDisconnect]:
+		c.Close()
+		defer onDisconnect()
+		return
+	case <-c.runningContext.Done():
+		return
+	}
+}
+
+func (c *Conn) authLoop(auth command.Auth) {
+	for {
+		select {
+		case <-c.responseChannels[TypeAuthRequest]:
+			response, err := c.SendCommand(context.Background(), auth)
+			if err != nil {
+				log.Printf("Failed to auth %e\n", err)
+				return
+			}
+			if !response.IsOk() {
+				// Try to gracefully disconnect
+				log.Printf("Failed to auth %#v\n", response)
+				_, _ = c.SendCommand(context.Background(), command.Exit{})
+				return
+			} else {
+				log.Printf("Sucessfully authenticated %s\n", c.conn.RemoteAddr())
+			}
+		case <-c.runningContext.Done():
+			return
+		}
+	}
 }

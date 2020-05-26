@@ -29,6 +29,7 @@ func ListenAndServe(address string, handler OutboundHandler) error {
 
 		log.Printf("New outbound connection from %s\n", c.RemoteAddr().String())
 		conn := newConnection(c, true)
+		go conn.dummyLoop()
 		// Does not call the handler directly to ensure closing cleanly
 		go conn.outboundHandle(handler)
 	}
@@ -51,4 +52,16 @@ func (c *Conn) outboundHandle(handler OutboundHandler) {
 	_, _ = c.SendCommand(ctx, command.Exit{})
 	cancel()
 	c.Close()
+}
+
+func (c *Conn) dummyLoop() {
+	select {
+	case <-c.responseChannels[TypeDisconnect]:
+		log.Println("Disconnect outbound connection", c.conn.RemoteAddr())
+		c.Close()
+	case <-c.responseChannels[TypeAuthRequest]:
+		log.Println("Ignoring auth request on outbound connection", c.conn.RemoteAddr())
+	case <-c.runningContext.Done():
+		return
+	}
 }

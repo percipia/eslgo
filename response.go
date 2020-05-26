@@ -14,6 +14,8 @@ const (
 	TypeEventXML    = `text/event-xml`
 	TypeReply       = `command/reply`
 	TypeAPIResponse = `api/response`
+	TypeAuthRequest = `auth/request`
+	TypeDisconnect  = `text/disconnect-notice`
 )
 
 type RawResponse struct {

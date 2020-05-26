@@ -43,6 +43,8 @@ func newConnection(c net.Conn, outbound bool) *Conn {
 			TypeEventPlain:  make(chan *RawResponse),
 			TypeEventXML:    make(chan *RawResponse),
 			TypeEventJSON:   make(chan *RawResponse),
+			TypeAuthRequest: make(chan *RawResponse),
+			TypeDisconnect:  make(chan *RawResponse),
 		},
 		runningContext: runningContext,
 		stopFunc:       stop,
