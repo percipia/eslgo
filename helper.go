@@ -73,20 +73,19 @@ func (c *Conn) AnswerCall(ctx context.Context, uuid string) error {
 	return err
 }
 
-func (c *Conn) Playback(ctx context.Context, uuid, audioCommand string, times int, wait bool) error {
-	response, err := c.SendCommand(ctx, &call.Execute{
-		UUID:    uuid,
-		AppName: "playback",
-		AppArgs: audioCommand,
-		Sync:    wait,
-	})
-	if err != nil {
-		return err
-	}
-	if !response.IsOk() {
-		return errors.New("playback response is not okay")
-	}
-	return nil
+// Playback - Executes the mod_dptools playback app
+func (c *Conn) Playback(ctx context.Context, uuid, audioArgs string, times int, wait bool) error {
+	return c.audioCommand(ctx, "playback", uuid, audioArgs, times, wait)
+}
+
+// Say - Executes the mod_dptools say app
+func (c *Conn) Say(ctx context.Context, uuid, audioArgs string, times int, wait bool) error {
+	return c.audioCommand(ctx, "say", uuid, audioArgs, times, wait)
+}
+
+// Speak - Executes the mod_dptools speak app
+func (c *Conn) Speak(ctx context.Context, uuid, audioArgs string, times int, wait bool) error {
+	return c.audioCommand(ctx, "speak", uuid, audioArgs, times, wait)
 }
 
 // WaitForDTMF, waits for a DTMF event. Requires events to be enabled!
@@ -113,4 +112,22 @@ func (c *Conn) WaitForDTMF(ctx context.Context, uuid string) (byte, error) {
 	case <-ctx.Done():
 		return 0, ctx.Err()
 	}
+}
+
+// Helper for mod_dptools apps since they are very similar in invocation
+func (c *Conn) audioCommand(ctx context.Context, command, uuid, audioArgs string, times int, wait bool) error {
+	response, err := c.SendCommand(ctx, &call.Execute{
+		UUID:    uuid,
+		AppName: command,
+		AppArgs: audioArgs,
+		Loops:   times,
+		Sync:    wait,
+	})
+	if err != nil {
+		return err
+	}
+	if !response.IsOk() {
+		return errors.New(command + " response is not okay")
+	}
+	return nil
 }
