@@ -67,6 +67,7 @@ func (e Event) GetName() string {
 // Implement the Stringer interface for pretty printing (%v)
 func (e Event) String() string {
 	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("%s\n", e.GetName()))
 	for key, values := range e.Headers {
 		builder.WriteString(fmt.Sprintf("%s: %#v\n", key, values))
 	}

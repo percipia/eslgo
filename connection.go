@@ -104,6 +104,9 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 func (c *Conn) Close() {
 	c.stopFunc()
 	_ = c.conn.Close()
+	for _, responseChan := range c.responseChannels {
+		close(responseChan)
+	}
 }
 
 func (c *Conn) callEventListener(event *Event) {

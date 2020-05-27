@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
 	"gitlab.percipia.com/libs/go/freeswitchesl/command/call"
+	"io"
+	"log"
 )
 
 func (c *Conn) EnableEvents(ctx context.Context) error {
@@ -22,6 +24,18 @@ func (c *Conn) EnableEvents(ctx context.Context) error {
 		})
 	}
 	return err
+}
+
+// DebugEvents - A helper that will output all events to a logger
+func (c *Conn) DebugEvents(w io.Writer) string {
+	logger := log.New(w, "EventLog: ", log.LstdFlags|log.Lmsgprefix)
+	return c.RegisterEventListener(EventListenAll, func(event *Event) {
+		logger.Println(event)
+	})
+}
+
+func (c *Conn) DebugOff(id string) {
+	c.RemoveEventListener(EventListenAll, id)
 }
 
 func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[string]string) (string, error) {
@@ -88,6 +102,7 @@ func (c *Conn) WaitForDTMF(ctx context.Context, uuid string) (byte, error) {
 		}
 	})
 	defer c.RemoveEventListener(uuid, listenerID)
+	defer close(done)
 
 	select {
 	case digit := <-done:
