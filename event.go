@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/textproto"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -63,7 +64,13 @@ func readJSONEvent(body []byte) (*Event, error) {
 }
 
 func (e Event) GetName() string {
-	return e.Headers.Get("Event-Name")
+	return e.GetHeader("Event-Name")
+}
+
+// Helper function that calls e.Header.Get
+func (e Event) GetHeader(header string) string {
+	value, _ := url.QueryUnescape(e.Headers.Get(header))
+	return value
 }
 
 // Implement the Stringer interface for pretty printing (%v)

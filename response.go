@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/textproto"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -59,12 +60,13 @@ func (r RawResponse) ChannelUUID() string {
 
 // Helper function to get "Variable_" headers
 func (r RawResponse) GetVariable(variable string) string {
-	return r.Headers.Get(fmt.Sprintf("Variable_%s", variable))
+	return r.GetHeader(fmt.Sprintf("Variable_%s", variable))
 }
 
 // Helper function that calls r.Header.Get
 func (r RawResponse) GetHeader(header string) string {
-	return r.Headers.Get(header)
+	value, _ := url.QueryUnescape(r.Headers.Get(header))
+	return value
 }
 
 // Implement the Stringer interface for pretty printing
