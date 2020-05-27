@@ -57,6 +57,16 @@ func (r RawResponse) ChannelUUID() string {
 	return r.Headers.Get("Unique-ID")
 }
 
+// Helper function to get "Variable_" headers
+func (r RawResponse) GetVariable(variable string) string {
+	return r.Headers.Get(fmt.Sprintf("Variable_%s", variable))
+}
+
+// Helper function that calls r.Header.Get
+func (r RawResponse) GetHeader(header string) string {
+	return r.Headers.Get(header)
+}
+
 // Implement the Stringer interface for pretty printing
 func (r RawResponse) String() string {
 	var builder strings.Builder
