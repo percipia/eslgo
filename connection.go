@@ -3,6 +3,7 @@ package freeswitchesl
 import (
 	"bufio"
 	"context"
+	"errors"
 	"github.com/google/uuid"
 	"gitlab.percipia.com/libs/go/freeswitchesl/command"
 	"log"
@@ -94,8 +95,16 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 	// Get response
 	select {
 	case response := <-c.responseChannels[TypeReply]:
+		if response == nil {
+			// We only get nil here if the channel is closed
+			return nil, errors.New("connection closed")
+		}
 		return response, nil
 	case response := <-c.responseChannels[TypeAPIResponse]:
+		if response == nil {
+			// We only get nil here if the channel is closed
+			return nil, errors.New("connection closed")
+		}
 		return response, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -109,8 +118,9 @@ func (c *Conn) Close() {
 func (c *Conn) close() {
 	c.stopFunc()
 	_ = c.conn.Close()
-	for _, responseChan := range c.responseChannels {
+	for key, responseChan := range c.responseChannels {
 		close(responseChan)
+		delete(c.responseChannels, key)
 	}
 }
 
@@ -148,10 +158,22 @@ func (c *Conn) eventLoop() {
 		var err error
 		select {
 		case raw := <-c.responseChannels[TypeEventPlain]:
+			if raw == nil {
+				// We only get nil here if the channel is closed
+				return
+			}
 			event, err = readPlainEvent(raw.Body)
 		case raw := <-c.responseChannels[TypeEventXML]:
+			if raw == nil {
+				// We only get nil here if the channel is closed
+				return
+			}
 			event, err = readXMLEvent(raw.Body)
 		case raw := <-c.responseChannels[TypeEventJSON]:
+			if raw == nil {
+				// We only get nil here if the channel is closed
+				return
+			}
 			event, err = readJSONEvent(raw.Body)
 		case <-c.runningContext.Done():
 			return
