@@ -23,6 +23,7 @@ type Conn struct {
 	eventListenerLock sync.RWMutex
 	eventListeners    map[string]map[string]EventListener
 	outbound          bool
+	closeOnce         sync.Once
 }
 
 const EndOfMessage = "\r\n\r\n"
@@ -102,6 +103,10 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 }
 
 func (c *Conn) Close() {
+	c.closeOnce.Do(c.close)
+}
+
+func (c *Conn) close() {
 	c.stopFunc()
 	_ = c.conn.Close()
 	for _, responseChan := range c.responseChannels {

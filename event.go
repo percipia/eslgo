@@ -48,12 +48,14 @@ func readPlainEvent(body []byte) (*Event, error) {
 	return event, nil
 }
 
+// TODO: Needs processing
 func readXMLEvent(body []byte) (*Event, error) {
 	return &Event{
 		Headers: make(textproto.MIMEHeader),
 	}, nil
 }
 
+// TODO: Needs processing
 func readJSONEvent(body []byte) (*Event, error) {
 	return &Event{
 		Headers: make(textproto.MIMEHeader),
