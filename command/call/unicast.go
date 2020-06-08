@@ -29,7 +29,7 @@ func (u Unicast) BuildMessage() string {
 		SyncPri: u.SyncPri,
 	}
 	localHost, localPort, _ := net.SplitHostPort(u.Local.String())
-	remoteHost, remotePort, _ := net.SplitHostPort(u.Local.String())
+	remoteHost, remotePort, _ := net.SplitHostPort(u.Remote.String())
 	sendMsg.Headers.Set("call-command", "unicast")
 	sendMsg.Headers.Set("local-ip", localHost)
 	sendMsg.Headers.Set("local-port", localPort)
