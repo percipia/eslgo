@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"net/http"
 	"net/textproto"
 	"strconv"
 	"strings"
@@ -65,17 +66,17 @@ func (s *SendEvent) BuildMessage() string {
 	} else {
 		delete(s.Headers, "Content-Length")
 	}
+
 	// Format the headers
 	var headers strings.Builder
-	for key, values := range s.Headers {
-		for _, value := range values {
-			headers.WriteString(key)
-			headers.WriteString(": ")
-			headers.WriteString(value)
-		}
+	err := http.Header(s.Headers).Write(&headers)
+	if err != nil || headers.Len() < 3 {
+		return ""
 	}
+	// -2 to remove the trailing \r\n added by http.Header.Write
+	headerString := headers.String()[:headers.Len()-2]
 	if _, ok := s.Headers["Content-Length"]; ok {
-		return fmt.Sprintf("sendevent %s\r\n%s\r\n\r\n%s", s.Name, headers.String(), s.Body)
+		return fmt.Sprintf("sendevent %s\r\n%s\r\n\r\n%s", s.Name, headerString, s.Body)
 	}
-	return fmt.Sprintf("sendevent %s\r\n%s", s.Name, headers.String())
+	return fmt.Sprintf("sendevent %s\r\n%s", s.Name, headerString)
 }
