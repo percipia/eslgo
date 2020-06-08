@@ -69,7 +69,7 @@ func (e Event) GetName() string {
 
 // Helper function that calls e.Header.Get
 func (e Event) GetHeader(header string) string {
-	value, _ := url.QueryUnescape(e.Headers.Get(header))
+	value, _ := url.PathUnescape(e.Headers.Get(header))
 	return value
 }
 

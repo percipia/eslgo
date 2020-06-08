@@ -65,7 +65,7 @@ func (r RawResponse) GetVariable(variable string) string {
 
 // Helper function that calls r.Header.Get
 func (r RawResponse) GetHeader(header string) string {
-	value, _ := url.QueryUnescape(r.Headers.Get(header))
+	value, _ := url.PathUnescape(r.Headers.Get(header))
 	return value
 }
 
