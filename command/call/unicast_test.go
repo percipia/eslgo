@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-var (
-	UnicastMessage = strings.ReplaceAll(`sendmsg none
+var TestUnicastMessage = strings.ReplaceAll(`sendmsg none
 Call-Command: unicast
 Flags: native
 Local-Ip: 192.168.1.100
@@ -16,7 +15,6 @@ Local-Port: 8025
 Remote-Ip: 192.168.1.101
 Remote-Port: 8026
 Transport: tcp`, "\n", "\r\n")
-)
 
 func TestUnicast_BuildMessage(t *testing.T) {
 	testLocal, _ := net.ResolveTCPAddr("tcp", "192.168.1.100:8025")
@@ -27,5 +25,5 @@ func TestUnicast_BuildMessage(t *testing.T) {
 		Remote: testRemote,
 		Flags:  "native",
 	}
-	assert.Equal(t, UnicastMessage, unicast.BuildMessage())
+	assert.Equal(t, TestUnicastMessage, unicast.BuildMessage())
 }

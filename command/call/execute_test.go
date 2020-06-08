@@ -7,12 +7,12 @@ import (
 )
 
 var (
-	ExecMessage = strings.ReplaceAll(`sendmsg none
+	TestExecMessage = strings.ReplaceAll(`sendmsg none
 Call-Command: execute
 Execute-App-Arg: /tmp/test.wav
 Execute-App-Name: playback
 Loops: 1`, "\n", "\r\n")
-	SetMessage = strings.ReplaceAll(`sendmsg none
+	TestSetMessage = strings.ReplaceAll(`sendmsg none
 Call-Command: execute
 Execute-App-Arg: hello=world
 Execute-App-Name: set
@@ -25,7 +25,7 @@ func TestExecute_BuildMessage(t *testing.T) {
 		AppName: "playback",
 		AppArgs: "/tmp/test.wav",
 	}
-	assert.Equal(t, ExecMessage, exec.BuildMessage())
+	assert.Equal(t, TestExecMessage, exec.BuildMessage())
 }
 
 func TestSet_BuildMessage(t *testing.T) {
@@ -34,5 +34,5 @@ func TestSet_BuildMessage(t *testing.T) {
 		Key:   "hello",
 		Value: "world",
 	}
-	assert.Equal(t, SetMessage, set.BuildMessage())
+	assert.Equal(t, TestSetMessage, set.BuildMessage())
 }
