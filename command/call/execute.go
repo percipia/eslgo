@@ -11,6 +11,7 @@ type Execute struct {
 	UUID    string
 	AppName string
 	AppArgs string
+	AppUUID string
 	Loops   int
 	Sync    bool
 	SyncPri bool
@@ -53,6 +54,10 @@ func (e *Execute) BuildMessage() string {
 	sendMsg.Headers.Set("call-command", "execute")
 	sendMsg.Headers.Set("execute-app-name", e.AppName)
 	sendMsg.Headers.Set("loops", strconv.Itoa(e.Loops))
+	// This allows us to track when application execution completes via the Application-UUID header in events.
+	if e.AppUUID != "" {
+		sendMsg.Headers.Set("Event-UUID", e.AppUUID)
+	}
 
 	// According to documentation that is the max header length
 	if len(e.AppArgs) > 2048 {
