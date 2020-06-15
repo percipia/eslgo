@@ -13,13 +13,13 @@ func main() {
 	log.Fatalln(freeswitchesl.ListenAndServe(":8084", handleConnection))
 }
 
-func handleConnection(conn *freeswitchesl.Conn, response *freeswitchesl.RawResponse) {
+func handleConnection(ctx context.Context, conn *freeswitchesl.Conn, response *freeswitchesl.RawResponse) {
 	fmt.Printf("Got connection! %#v\n", response)
-	conn.SendCommand(context.Background(), command.Event{
+	conn.SendCommand(ctx, command.Event{
 		Format: "plain",
 		Listen: []string{"ALL"},
 	})
-	conn.SendCommand(context.Background(), command.API{
+	conn.SendCommand(ctx, command.API{
 		Command:   "originate",
 		Arguments: "user/100 &park()",
 	})
