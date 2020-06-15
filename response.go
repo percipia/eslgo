@@ -50,12 +50,12 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 
 // Helper to check response status, only used for Auth checking at the moment
 func (r RawResponse) IsOk() bool {
-	return strings.HasPrefix(r.Headers.Get("Reply-Text"), "+OK")
+	return strings.HasPrefix(r.GetHeader("Reply-Text"), "+OK")
 }
 
 // Helper to get the channel UUID
 func (r RawResponse) ChannelUUID() string {
-	return r.Headers.Get("Unique-ID")
+	return r.GetHeader("Unique-ID")
 }
 
 // Helper function to get "Variable_" headers

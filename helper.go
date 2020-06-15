@@ -92,8 +92,8 @@ func (c *Conn) Speak(ctx context.Context, uuid, audioArgs string, times int, wai
 func (c *Conn) WaitForDTMF(ctx context.Context, uuid string) (byte, error) {
 	done := make(chan byte, 1)
 	listenerID := c.RegisterEventListener(uuid, func(event *Event) {
-		if event.Headers.Get("Event-Name") == "DTMF" {
-			dtmf := event.Headers.Get("DTMF-Digit")
+		if event.GetName() == "DTMF" {
+			dtmf := event.GetHeader("DTMF-Digit")
 			if len(dtmf) > 0 {
 				done <- dtmf[0]
 			}

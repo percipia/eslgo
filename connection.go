@@ -21,6 +21,7 @@ type Conn struct {
 	runningContext    context.Context
 	stopFunc          func()
 	responseChannels  map[string]chan *RawResponse
+	responseChanMutex sync.RWMutex
 	eventListenerLock sync.RWMutex
 	eventListeners    map[string]map[string]EventListener
 	outbound          bool
@@ -93,6 +94,8 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 	}
 
 	// Get response
+	c.responseChanMutex.RLock()
+	defer c.responseChanMutex.RUnlock()
 	select {
 	case response := <-c.responseChannels[TypeReply]:
 		if response == nil {
@@ -118,6 +121,8 @@ func (c *Conn) Close() {
 func (c *Conn) close() {
 	c.stopFunc()
 	_ = c.conn.Close()
+	c.responseChanMutex.Lock()
+	defer c.responseChanMutex.Unlock()
 	for key, responseChan := range c.responseChannels {
 		close(responseChan)
 		delete(c.responseChannels, key)
@@ -136,7 +141,7 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular channel
-	channelUUID := event.Headers.Get("Unique-Id")
+	channelUUID := event.GetHeader("Unique-Id")
 	if listeners, ok := c.eventListeners[channelUUID]; ok {
 		for _, listener := range listeners {
 			go listener(event)
@@ -144,7 +149,7 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular application
-	appUUID := event.Headers.Get("Application-UUID")
+	appUUID := event.GetHeader("Application-UUID")
 	if listeners, ok := c.eventListeners[appUUID]; ok {
 		for _, listener := range listeners {
 			go listener(event)
@@ -156,28 +161,34 @@ func (c *Conn) eventLoop() {
 	for {
 		var event *Event
 		var err error
+		c.responseChanMutex.RLock()
 		select {
 		case raw := <-c.responseChannels[TypeEventPlain]:
 			if raw == nil {
 				// We only get nil here if the channel is closed
+				c.responseChanMutex.RUnlock()
 				return
 			}
 			event, err = readPlainEvent(raw.Body)
 		case raw := <-c.responseChannels[TypeEventXML]:
 			if raw == nil {
 				// We only get nil here if the channel is closed
+				c.responseChanMutex.RUnlock()
 				return
 			}
 			event, err = readXMLEvent(raw.Body)
 		case raw := <-c.responseChannels[TypeEventJSON]:
 			if raw == nil {
 				// We only get nil here if the channel is closed
+				c.responseChanMutex.RUnlock()
 				return
 			}
 			event, err = readJSONEvent(raw.Body)
 		case <-c.runningContext.Done():
+			c.responseChanMutex.RUnlock()
 			return
 		}
+		c.responseChanMutex.RUnlock()
 
 		if err != nil {
 			log.Printf("Error parsing event\n%s\n", err.Error())
@@ -195,7 +206,14 @@ func (c *Conn) receiveLoop() {
 			break
 		}
 
-		if responseChan, ok := c.responseChannels[response.Headers.Get("Content-Type")]; ok {
+		c.responseChanMutex.RLock()
+		responseChan, ok := c.responseChannels[response.GetHeader("Content-Type")]
+		if !ok && len(c.responseChannels) <= 0 {
+			// We must have shutdown!
+			break
+		}
+		c.responseChanMutex.RUnlock()
+		if ok {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			select {
 			case responseChan <- response:
