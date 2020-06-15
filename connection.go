@@ -141,7 +141,7 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular channel
-	channelUUID := event.Headers.Get("Unique-Id")
+	channelUUID := event.GetHeader("Unique-Id")
 	if listeners, ok := c.eventListeners[channelUUID]; ok {
 		for _, listener := range listeners {
 			go listener(event)
@@ -149,7 +149,7 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular application
-	appUUID := event.Headers.Get("Application-UUID")
+	appUUID := event.GetHeader("Application-UUID")
 	if listeners, ok := c.eventListeners[appUUID]; ok {
 		for _, listener := range listeners {
 			go listener(event)
@@ -207,7 +207,7 @@ func (c *Conn) receiveLoop() {
 		}
 
 		c.responseChanMutex.RLock()
-		responseChan, ok := c.responseChannels[response.Headers.Get("Content-Type")]
+		responseChan, ok := c.responseChannels[response.GetHeader("Content-Type")]
 		if !ok && len(c.responseChannels) <= 0 {
 			// We must have shutdown!
 			break
