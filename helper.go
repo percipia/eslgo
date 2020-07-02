@@ -9,6 +9,7 @@ import (
 	"gitlab.percipia.com/libs/go/freeswitchesl/command/call"
 	"io"
 	"log"
+	"strings"
 )
 
 func (c *Conn) EnableEvents(ctx context.Context) error {
@@ -47,7 +48,29 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 	}
 	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
-		Arguments:  fmt.Sprintf("%s%s %s", buildVars(vars), aLeg, bLeg),
+		Arguments:  fmt.Sprintf("%s%s %s", buildVars("{%s}", vars), aLeg, bLeg),
+		Background: true,
+	})
+	if err != nil {
+		return vars["origination_uuid"], err
+	}
+	return vars["origination_uuid"], nil
+}
+
+func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) (string, error) {
+	if vars == nil {
+		vars = make(map[string]string)
+	}
+	vars["origination_uuid"] = uuid.New().String()
+
+	if len(aLegs) == 0 {
+		return "", errors.New("no aLeg specified")
+	}
+	aLeg := strings.Join(aLegs, ":_:")
+
+	_, err := c.SendCommand(ctx, command.API{
+		Command:    "originate",
+		Arguments:  fmt.Sprintf("%s%s %s", buildVars("<%s>", vars), aLeg, bLeg),
 		Background: true,
 	})
 	if err != nil {

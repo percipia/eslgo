@@ -7,7 +7,7 @@ import (
 )
 
 func Test_buildVars(t *testing.T) {
-	vars := buildVars(map[string]string{
+	vars := buildVars("{%s}", map[string]string{
 		"origination_caller_name":   "test",
 		"origination_caller_number": "1234",
 		"origination_callee_name":   "John Doe",
