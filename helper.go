@@ -52,12 +52,12 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 		Background: true,
 	})
 	if err != nil {
-		return vars["origination_uuid"], err
+		return vars["origination_uuid"], response, err
 	}
-	return vars["origination_uuid"], nil
+	return vars["origination_uuid"], response, nil
 }
 
-func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) (string, error) {
+func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) (string, *RawResponse, error) {
 	if vars == nil {
 		vars = make(map[string]string)
 	}
@@ -66,11 +66,11 @@ func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]stri
 	}
 
 	if len(aLegs) == 0 {
-		return "", errors.New("no aLeg specified")
+		return "", nil, errors.New("no aLeg specified")
 	}
 	aLeg := strings.Join(aLegs, ":_:")
 
-	_, err := c.SendCommand(ctx, command.API{
+	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
 		Arguments:  fmt.Sprintf("%s%s %s", buildVars("<%s>", vars), aLeg, bLeg),
 		Background: true,
