@@ -61,7 +61,9 @@ func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]stri
 	if vars == nil {
 		vars = make(map[string]string)
 	}
-	vars["origination_uuid"] = uuid.New().String()
+	if _, ok := vars["origination_uuid"]; !ok {
+		vars["origination_uuid"] = uuid.New().String()
+	}
 
 	if len(aLegs) == 0 {
 		return "", errors.New("no aLeg specified")
