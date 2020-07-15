@@ -38,22 +38,22 @@ func (c *Conn) DebugOff(id string) {
 	c.RemoveEventListener(EventListenAll, id)
 }
 
-func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[string]string) (string, error) {
+func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[string]string) (string, *RawResponse, error) {
 	if vars == nil {
 		vars = make(map[string]string)
 	}
 	if _, ok := vars["origination_uuid"]; !ok {
 		vars["origination_uuid"] = uuid.New().String()
 	}
-	_, err := c.SendCommand(ctx, command.API{
+	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
 		Arguments:  fmt.Sprintf("%s%s %s", buildVars(vars), aLeg, bLeg),
 		Background: true,
 	})
 	if err != nil {
-		return vars["origination_uuid"], err
+		return vars["origination_uuid"], response, err
 	}
-	return vars["origination_uuid"], nil
+	return vars["origination_uuid"], response, nil
 }
 
 func (c *Conn) HangupCall(ctx context.Context, uuid, cause string) error {
