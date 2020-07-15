@@ -42,8 +42,9 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 	if vars == nil {
 		vars = make(map[string]string)
 	}
-	vars["origination_uuid"] = uuid.New().String()
-
+	if _, ok := vars["origination_uuid"]; !ok {
+		vars["origination_uuid"] = uuid.New().String()
+	}
 	_, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
 		Arguments:  fmt.Sprintf("%s%s %s", buildVars(vars), aLeg, bLeg),
