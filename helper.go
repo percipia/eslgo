@@ -57,17 +57,26 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 	return vars["origination_uuid"], response, nil
 }
 
-func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) (string, *RawResponse, error) {
+func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) ([]string, *RawResponse, error) {
+	if len(aLegs) == 0 {
+		return []string{}, nil, errors.New("no aLeg specified")
+	}
+
 	if vars == nil {
 		vars = make(map[string]string)
 	}
-	if _, ok := vars["origination_uuid"]; !ok {
-		vars["origination_uuid"] = uuid.New().String()
+
+	if _, ok := vars["origination_uuid"]; ok {
+		// We cannot set origination uuid globally for all A-legs
+		delete(vars, "origination_uuid")
 	}
 
-	if len(aLegs) == 0 {
-		return "", nil, errors.New("no aLeg specified")
+	uuids := make([]string, len(aLegs))
+	for i, aLeg := range aLegs {
+		uuids[0] = uuid.New().String()
+		aLegs[i] = fmt.Sprintf("%s%s", buildVars("{%s}", map[string]string{"origination_uuid": uuids[0]}), aLeg)
 	}
+
 	aLeg := strings.Join(aLegs, ":_:")
 
 	response, err := c.SendCommand(ctx, command.API{
@@ -76,9 +85,9 @@ func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]stri
 		Background: true,
 	})
 	if err != nil {
-		return vars["origination_uuid"], response, err
+		return uuids, response, err
 	}
-	return vars["origination_uuid"], response, nil
+	return uuids, response, nil
 }
 
 func (c *Conn) HangupCall(ctx context.Context, uuid, cause string) error {
