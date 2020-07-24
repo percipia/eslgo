@@ -141,18 +141,32 @@ func (c *Conn) callEventListener(event *Event) {
 	}
 
 	// Next call any listeners for a particular channel
-	channelUUID := event.GetHeader("Unique-Id")
-	if listeners, ok := c.eventListeners[channelUUID]; ok {
-		for _, listener := range listeners {
-			go listener(event)
+	if event.HasHeader("Unique-Id") {
+		channelUUID := event.GetHeader("Unique-Id")
+		if listeners, ok := c.eventListeners[channelUUID]; ok {
+			for _, listener := range listeners {
+				go listener(event)
+			}
 		}
 	}
 
 	// Next call any listeners for a particular application
-	appUUID := event.GetHeader("Application-UUID")
-	if listeners, ok := c.eventListeners[appUUID]; ok {
-		for _, listener := range listeners {
-			go listener(event)
+	if event.HasHeader("Application-UUID") {
+		appUUID := event.GetHeader("Application-UUID")
+		if listeners, ok := c.eventListeners[appUUID]; ok {
+			for _, listener := range listeners {
+				go listener(event)
+			}
+		}
+	}
+
+	// Next call any listeners for a particular job
+	if event.HasHeader("Job-UUID") {
+		jobUUID := event.GetHeader("Job-UUID")
+		if listeners, ok := c.eventListeners[jobUUID]; ok {
+			for _, listener := range listeners {
+				go listener(event)
+			}
 		}
 	}
 }
