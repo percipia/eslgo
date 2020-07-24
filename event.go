@@ -67,6 +67,11 @@ func (e Event) GetName() string {
 	return e.GetHeader("Event-Name")
 }
 
+func (e Event) HasHeader(header string) bool {
+	_, ok := e.Headers[textproto.CanonicalMIMEHeaderKey(header)]
+	return ok
+}
+
 // Helper function that calls e.Header.Get
 func (e Event) GetHeader(header string) string {
 	value, _ := url.PathUnescape(e.Headers.Get(header))

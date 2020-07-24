@@ -9,6 +9,7 @@ import (
 	"gitlab.percipia.com/libs/go/freeswitchesl/command/call"
 	"io"
 	"log"
+	"strings"
 )
 
 func (c *Conn) EnableEvents(ctx context.Context) error {
@@ -47,13 +48,40 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 	}
 	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
-		Arguments:  fmt.Sprintf("%s%s %s", buildVars(vars), aLeg, bLeg),
+		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("{%s}", vars), aLeg, bLeg),
 		Background: true,
 	})
 	if err != nil {
 		return vars["origination_uuid"], response, err
 	}
 	return vars["origination_uuid"], response, nil
+}
+
+func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) (*RawResponse, error) {
+	if len(aLegs) == 0 {
+		return nil, errors.New("no aLeg specified")
+	}
+
+	if vars == nil {
+		vars = make(map[string]string)
+	}
+
+	if _, ok := vars["origination_uuid"]; ok {
+		// We cannot set origination uuid globally for all A-legs
+		delete(vars, "origination_uuid")
+	}
+
+	aLeg := strings.Join(aLegs, ":_:")
+
+	response, err := c.SendCommand(ctx, command.API{
+		Command:    "originate",
+		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("<%s>", vars), aLeg, bLeg),
+		Background: true,
+	})
+	if err != nil {
+		return response, err
+	}
+	return response, nil
 }
 
 func (c *Conn) HangupCall(ctx context.Context, uuid, cause string) error {

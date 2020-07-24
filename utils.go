@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func buildVars(vars map[string]string) string {
+func BuildVars(format string, vars map[string]string) string {
 	var builder strings.Builder
 	for key, value := range vars {
 		if builder.Len() > 0 {
@@ -21,5 +21,5 @@ func buildVars(vars map[string]string) string {
 			builder.WriteString(value)
 		}
 	}
-	return fmt.Sprintf("{%s}", builder.String())
+	return fmt.Sprintf(format, builder.String())
 }
