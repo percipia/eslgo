@@ -48,7 +48,7 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 	}
 	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
-		Arguments:  fmt.Sprintf("%s%s %s", buildVars("{%s}", vars), aLeg, bLeg),
+		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("{%s}", vars), aLeg, bLeg),
 		Background: true,
 	})
 	if err != nil {
@@ -57,9 +57,9 @@ func (c *Conn) OriginateCall(ctx context.Context, aLeg, bLeg string, vars map[st
 	return vars["origination_uuid"], response, nil
 }
 
-func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) ([]string, *RawResponse, error) {
+func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]string, bLeg string, aLegs ...string) (*RawResponse, error) {
 	if len(aLegs) == 0 {
-		return []string{}, nil, errors.New("no aLeg specified")
+		return nil, errors.New("no aLeg specified")
 	}
 
 	if vars == nil {
@@ -71,23 +71,17 @@ func (c *Conn) EnterpriseOriginateCall(ctx context.Context, vars map[string]stri
 		delete(vars, "origination_uuid")
 	}
 
-	uuids := make([]string, len(aLegs))
-	for i, aLeg := range aLegs {
-		uuids[0] = uuid.New().String()
-		aLegs[i] = fmt.Sprintf("%s%s", buildVars("{%s}", map[string]string{"origination_uuid": uuids[0]}), aLeg)
-	}
-
 	aLeg := strings.Join(aLegs, ":_:")
 
 	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
-		Arguments:  fmt.Sprintf("%s%s %s", buildVars("<%s>", vars), aLeg, bLeg),
+		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("<%s>", vars), aLeg, bLeg),
 		Background: true,
 	})
 	if err != nil {
-		return uuids, response, err
+		return response, err
 	}
-	return uuids, response, nil
+	return response, nil
 }
 
 func (c *Conn) HangupCall(ctx context.Context, uuid, cause string) error {

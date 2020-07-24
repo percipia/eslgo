@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func Test_buildVars(t *testing.T) {
-	vars := buildVars("{%s}", map[string]string{
+func Test_BuildVars(t *testing.T) {
+	vars := BuildVars("{%s}", map[string]string{
 		"origination_caller_name":   "test",
 		"origination_caller_number": "1234",
 		"origination_callee_name":   "John Doe",

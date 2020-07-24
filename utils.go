@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func buildVars(format string, vars map[string]string) string {
+func BuildVars(format string, vars map[string]string) string {
 	var builder strings.Builder
 	for key, value := range vars {
 		if builder.Len() > 0 {
