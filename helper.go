@@ -102,6 +102,16 @@ func (c *Conn) AnswerCall(ctx context.Context, uuid string) error {
 	return err
 }
 
+// Phrase - Executes the mod_dptools phrase app
+func (c *Conn) Phrase(ctx context.Context, uuid, macro string, times int, wait bool) error {
+	return c.audioCommand(ctx, "phrase", uuid, macro, times, wait)
+}
+
+// PhraseWithArg - Executes the mod_dptools phrase app with arguments
+func (c *Conn) PhraseWithArg(ctx context.Context, uuid, macro string, argument interface{}, times int, wait bool) error {
+	return c.audioCommand(ctx, "phrase", uuid, fmt.Sprintf("%s,%v", macro, argument), times, wait)
+}
+
 // Playback - Executes the mod_dptools playback app
 func (c *Conn) Playback(ctx context.Context, uuid, audioArgs string, times int, wait bool) error {
 	return c.audioCommand(ctx, "playback", uuid, audioArgs, times, wait)
