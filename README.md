@@ -1,5 +1,6 @@
 # eslgo
-eslgo is a [FreeSWITCH™](https://freeswitch.com/) ESL library for GoLang
+eslgo is a [FreeSWITCH™](https://freeswitch.com/) ESL library for GoLang.
+eslgo was written from the ground up in idiomatic Go fo use in our production products tested handling thousands of calls per second.
 
 ## Install
 ```
@@ -10,7 +11,7 @@ github.com/percipia/eslgo v1.2.1
 ```
 
 ## Overview
-- Inbound ESL Connections
+- Inbound ESL Connection
 - Outbound ESL Server
 - Context Support
 - Basic Helpers for common tasks
@@ -30,7 +31,6 @@ import (
 	"fmt"
 	"github.com/percipia/eslgo"
 	"log"
-	"time"
 )
 
 func main() {
