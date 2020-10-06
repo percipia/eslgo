@@ -13,15 +13,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"gitlab.percipia.com/libs/go/freeswitchesl"
+	"github.com/percipia/eslgo"
 	"log"
 )
 
 func main() {
-	log.Fatalln(freeswitchesl.ListenAndServe(":8084", handleConnection))
+	log.Fatalln(eslgo.ListenAndServe(":8084", handleConnection))
 }
 
-func handleConnection(ctx context.Context, conn *freeswitchesl.Conn, response *freeswitchesl.RawResponse) {
+func handleConnection(ctx context.Context, conn *eslgo.Conn, response *eslgo.RawResponse) {
 	fmt.Printf("Got connection! %#v\n", response)
 	_ = conn.EnableEvents(ctx)
 	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})

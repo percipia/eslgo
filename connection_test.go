@@ -8,13 +8,13 @@
  * Contributor(s):
  * Andrew Querol <aquerol@percipia.com>
  */
-package freeswitchesl
+package eslgo
 
 import (
 	"bufio"
 	"context"
+	"github.com/percipia/eslgo/command"
 	"github.com/stretchr/testify/assert"
-	"gitlab.percipia.com/libs/go/freeswitchesl/command"
 	"net"
 	"sync"
 	"testing"

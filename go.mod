@@ -1,4 +1,4 @@
-module gitlab.percipia.com/libs/go/freeswitchesl
+module github.com/percipia/eslgo
 
 go 1.14
 

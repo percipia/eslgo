@@ -8,14 +8,14 @@
  * Contributor(s):
  * Andrew Querol <aquerol@percipia.com>
  */
-package freeswitchesl
+package eslgo
 
 import (
 	"bufio"
 	"context"
 	"errors"
 	"github.com/google/uuid"
-	"gitlab.percipia.com/libs/go/freeswitchesl/command"
+	"github.com/percipia/eslgo/command"
 	"log"
 	"net"
 	"net/textproto"

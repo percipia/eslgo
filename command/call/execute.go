@@ -12,7 +12,7 @@ package call
 
 import (
 	"fmt"
-	"gitlab.percipia.com/libs/go/freeswitchesl/command"
+	"github.com/percipia/eslgo/command"
 	"net/textproto"
 	"strconv"
 )

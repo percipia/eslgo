@@ -13,12 +13,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"gitlab.percipia.com/libs/go/freeswitchesl"
+	"github.com/percipia/eslgo"
 	"time"
 )
 
 func main() {
-	conn, err := freeswitchesl.Dial("127.0.0.1", "ClueCon", func() {
+	conn, err := eslgo.Dial("127.0.0.1", "ClueCon", func() {
 		fmt.Println("Inbound Connection Done")
 	})
 

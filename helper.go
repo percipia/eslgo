@@ -8,15 +8,15 @@
  * Contributor(s):
  * Andrew Querol <aquerol@percipia.com>
  */
-package freeswitchesl
+package eslgo
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"gitlab.percipia.com/libs/go/freeswitchesl/command"
-	"gitlab.percipia.com/libs/go/freeswitchesl/command/call"
+	"github.com/percipia/eslgo/command"
+	"github.com/percipia/eslgo/command/call"
 	"io"
 	"log"
 	"strings"
