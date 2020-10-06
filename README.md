@@ -1,4 +1,8 @@
 # eslgo
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/percipia/eslgo/Go)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/percipia/eslgo.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/percipia/eslgo/alerts/)
+[![GitHub license](https://img.shields.io/github/license/percipia/eslgo)](https://github.com/percipia/eslgo/blob/v1/LICENSE)
+
 eslgo is a [FreeSWITCH™](https://freeswitch.com/) ESL library for GoLang.
 eslgo was written from the ground up in idiomatic Go fo use in our production products tested handling thousands of calls per second.
 
