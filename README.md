@@ -1,4 +1,5 @@
 # eslgo
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/percipia/eslgo)](https://pkg.go.dev/github.com/percipia/eslgo)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/percipia/eslgo/Go)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/percipia/eslgo.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/percipia/eslgo/alerts/)
 [![GitHub license](https://img.shields.io/github/license/percipia/eslgo)](https://github.com/percipia/eslgo/blob/v1/LICENSE)
@@ -38,12 +39,14 @@ import (
 )
 
 func main() {
+	// Start listening, this is a blocking function
 	log.Fatalln(eslgo.ListenAndServe(":8084", handleConnection))
 }
 
 func handleConnection(ctx context.Context, conn *eslgo.Conn, response *eslgo.RawResponse) {
 	fmt.Printf("Got connection! %#v\n", response)
-	_ = conn.EnableEvents(ctx)
+
+	// Place the call to user 100 and playback an audio file as the bLeg and no channel variables
 	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
 	fmt.Println("Call Originated: ", originationUUID, response, err)
 }
@@ -60,17 +63,25 @@ import (
 )
 
 func main() {
-	conn, err := eslgo.Dial("127.0.0.1", "ClueCon", func() {
-		fmt.Println("Inbound Connection Done")
+	// Connect to FreeSWITCH
+	conn, err := eslgo.Dial("127.0.0.1:8021", "ClueCon", func() {
+		fmt.Println("Inbound Connection Disconnected")
 	})
+	if err != nil {
+		fmt.Println("Error connecting", err)
+		return
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Minute)
+	// Create a basic context
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	_ = conn.EnableEvents(ctx)
+	// Place the call to user 100 and playback an audio file as the bLeg
 	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
 	fmt.Println("Call Originated: ", originationUUID, response, err)
 
+	// Close the connection after sleeping for a bit
 	time.Sleep(60 * time.Second)
+	conn.Close()
 }
 ```

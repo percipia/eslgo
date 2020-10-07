@@ -18,12 +18,14 @@ import (
 )
 
 func main() {
+	// Start listening, this is a blocking function
 	log.Fatalln(eslgo.ListenAndServe(":8084", handleConnection))
 }
 
 func handleConnection(ctx context.Context, conn *eslgo.Conn, response *eslgo.RawResponse) {
 	fmt.Printf("Got connection! %#v\n", response)
-	_ = conn.EnableEvents(ctx)
+
+	// Place the call to user 100 and playback an audio file as the bLeg and no channel variables
 	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
 	fmt.Println("Call Originated: ", originationUUID, response, err)
 }

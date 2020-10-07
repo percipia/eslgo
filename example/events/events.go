@@ -11,9 +11,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/percipia/eslgo"
+	"os"
 	"time"
 )
 
@@ -27,15 +29,26 @@ func main() {
 		return
 	}
 
-	// Create a basic context
+	// Register an event listener for all events
+	listenerID := conn.RegisterEventListener(eslgo.EventListenAll, func(event *eslgo.Event) {
+		fmt.Printf("%#v\n", event)
+	})
+
+	// Ensure all events are enabled
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	_ = conn.EnableEvents(ctx)
+	cancel()
 
-	// Place the call to user 100 and playback an audio file as the bLeg
-	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
-	fmt.Println("Call Originated: ", originationUUID, response, err)
+	// Wait until enter is pressed to exit
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		text, _ := reader.ReadString('\n')
+		if text != "" {
+			break
+		}
+	}
 
-	// Close the connection after sleeping for a bit
-	time.Sleep(60 * time.Second)
+	// Remove the listener and close the connection
+	conn.RemoveEventListener(eslgo.EventListenAll, listenerID)
 	conn.Close()
 }
