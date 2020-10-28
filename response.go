@@ -29,6 +29,7 @@ const (
 	TypeDisconnect  = `text/disconnect-notice`
 )
 
+// RawResponse This struct contains all response data from FreeSWITCH
 type RawResponse struct {
 	Headers textproto.MIMEHeader
 	Body    []byte
@@ -58,28 +59,38 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 	return response, nil
 }
 
-// Helper to check response status, only used for Auth checking at the moment
+// IsOk Helper to check response status, uses the Reply-Text header primarily.
+// Also will use the body if the Reply-Text header does not exist, this can be the case for TypeAPIResponse
 func (r RawResponse) IsOk() bool {
-	return strings.HasPrefix(r.GetHeader("Reply-Text"), "+OK")
+	if r.HasHeader("Reply-Text") {
+		strings.HasPrefix(r.GetHeader("Reply-Text"), "+OK")
+	}
+	return strings.HasPrefix(string(r.Body), "+OK")
 }
 
-// Helper to get the channel UUID
+// ChannelUUID Helper to get the channel UUID. Calls GetHeader internally
 func (r RawResponse) ChannelUUID() string {
 	return r.GetHeader("Unique-ID")
 }
 
-// Helper function to get "Variable_" headers
+// HasHeader Helper to check if the RawResponse has a header
+func (r RawResponse) HasHeader(header string) bool {
+	_, ok := r.Headers[textproto.CanonicalMIMEHeaderKey(header)]
+	return ok
+}
+
+// GetVariable Helper function to get "Variable_" headers. Calls GetHeader internally
 func (r RawResponse) GetVariable(variable string) string {
 	return r.GetHeader(fmt.Sprintf("Variable_%s", variable))
 }
 
-// Helper function that calls r.Header.Get
+// GetHeader Helper function that calls RawResponse.Headers.Get. Result gets passed through url.PathUnescape
 func (r RawResponse) GetHeader(header string) string {
 	value, _ := url.PathUnescape(r.Headers.Get(header))
 	return value
 }
 
-// Implement the Stringer interface for pretty printing
+// String Implement the Stringer interface for pretty printing
 func (r RawResponse) String() string {
 	var builder strings.Builder
 	for key, values := range r.Headers {
@@ -89,7 +100,7 @@ func (r RawResponse) String() string {
 	return builder.String()
 }
 
-// Implement the GoStringer interface for pretty printing (%#v)
+// GoString Implement the GoStringer interface for pretty printing (%#v)
 func (r RawResponse) GoString() string {
 	return r.String()
 }
