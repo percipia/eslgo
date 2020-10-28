@@ -63,7 +63,7 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 // Also will use the body if the Reply-Text header does not exist, this can be the case for TypeAPIResponse
 func (r RawResponse) IsOk() bool {
 	if r.HasHeader("Reply-Text") {
-		strings.HasPrefix(r.GetHeader("Reply-Text"), "+OK")
+		return strings.HasPrefix(r.GetHeader("Reply-Text"), "+OK")
 	}
 	return strings.HasPrefix(string(r.Body), "+OK")
 }
