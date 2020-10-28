@@ -32,7 +32,7 @@ func main() {
 	defer cancel()
 
 	// Place the call to user 100 and playback an audio file as the bLeg
-	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
+	originationUUID, response, err := conn.OriginateCall(ctx, true, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
 	fmt.Println("Call Originated: ", originationUUID, response, err)
 
 	// Close the connection after sleeping for a bit

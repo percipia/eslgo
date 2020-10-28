@@ -26,6 +26,6 @@ func handleConnection(ctx context.Context, conn *eslgo.Conn, response *eslgo.Raw
 	fmt.Printf("Got connection! %#v\n", response)
 
 	// Place the call to user 100 and playback an audio file as the bLeg and no channel variables
-	originationUUID, response, err := conn.OriginateCall(ctx, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
+	originationUUID, response, err := conn.OriginateCall(ctx, false, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
 	fmt.Println("Call Originated: ", originationUUID, response, err)
 }
