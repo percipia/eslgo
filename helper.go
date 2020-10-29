@@ -57,9 +57,18 @@ func (c *Conn) OriginateCall(ctx context.Context, background bool, aLeg, bLeg st
 	if vars == nil {
 		vars = make(map[string]string)
 	}
-	if _, ok := vars["origination_uuid"]; !ok {
-		vars["origination_uuid"] = uuid.New().String()
+
+	if background {
+		if _, ok := vars["origination_uuid"]; !ok {
+			vars["origination_uuid"] = uuid.New().String()
+		}
+	} else {
+		if _, ok := vars["origination_uuid"]; ok {
+			// We cannot set origination uuid globally foreground calls
+			delete(vars, "origination_uuid")
+		}
 	}
+
 	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
 		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("{%s}", vars), aLeg, bLeg),

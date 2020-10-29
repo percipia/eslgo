@@ -59,13 +59,18 @@ func (c *Conn) readResponse() (*RawResponse, error) {
 	return response, nil
 }
 
-// IsOk Helper to check response status, uses the Reply-Text header primarily.
-// Also will use the body if the Reply-Text header does not exist, this can be the case for TypeAPIResponse
+// IsOk Helper to check response status, uses the Reply-Text header primarily. Calls GetReply internally
 func (r RawResponse) IsOk() bool {
+	return strings.HasPrefix(r.GetReply(), "+OK")
+}
+
+// GetReply Helper to get the Reply text from FreeSWITCH, uses the Reply-Text header primarily.
+// Also will use the body if the Reply-Text header does not exist, this can be the case for TypeAPIResponse
+func (r RawResponse) GetReply() string {
 	if r.HasHeader("Reply-Text") {
-		return strings.HasPrefix(r.GetHeader("Reply-Text"), "+OK")
+		return r.GetHeader("Reply-Text")
 	}
-	return strings.HasPrefix(string(r.Body), "+OK")
+	return string(r.Body)
 }
 
 // ChannelUUID Helper to get the channel UUID. Calls GetHeader internally
