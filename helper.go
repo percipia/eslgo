@@ -14,12 +14,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/percipia/eslgo/command"
 	"github.com/percipia/eslgo/command/call"
 	"io"
 	"log"
-	"strings"
 )
 
 func (c *Conn) EnableEvents(ctx context.Context) error {
@@ -47,88 +45,6 @@ func (c *Conn) DebugEvents(w io.Writer) string {
 
 func (c *Conn) DebugOff(id string) {
 	c.RemoveEventListener(EventListenAll, id)
-}
-
-// OriginateCall - Calls the originate function in FreeSWITCH. If you want variables for each leg independently set them in the aLeg and bLeg strings
-// Arguments: ctx context.Context for supporting context cancellation, background bool should we wait for the origination to complete
-// aLeg, bLeg string The aLeg and bLeg of the call respectively
-// vars map[string]string, channel variables to be passed to originate for both legs, contained in {}
-func (c *Conn) OriginateCall(ctx context.Context, background bool, aLeg, bLeg string, vars map[string]string) (string, *RawResponse, error) {
-	if vars == nil {
-		vars = make(map[string]string)
-	}
-
-	if background {
-		if _, ok := vars["origination_uuid"]; !ok {
-			vars["origination_uuid"] = uuid.New().String()
-		}
-	} else {
-		if _, ok := vars["origination_uuid"]; ok {
-			// We cannot set origination uuid globally foreground calls
-			delete(vars, "origination_uuid")
-		}
-	}
-
-	response, err := c.SendCommand(ctx, command.API{
-		Command:    "originate",
-		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("{%s}", vars), aLeg, bLeg),
-		Background: background,
-	})
-	if err != nil {
-		return vars["origination_uuid"], response, err
-	}
-	return vars["origination_uuid"], response, nil
-}
-
-// EnterpriseOriginateCall - Calls the originate function in FreeSWITCH using the enterprise method for calling multiple legs ":_:"
-// If you want variables for each leg independently set them in the aLeg and bLeg strings
-// Arguments: ctx context.Context for supporting context cancellation, background bool should we wait for the origination to complete
-// vars map[string]string, channel variables to be passed to originate for both legs, contained in <>
-// bLeg string The bLeg of the call
-// aLegs ...string variadic argument for each aLeg to call
-func (c *Conn) EnterpriseOriginateCall(ctx context.Context, background bool, vars map[string]string, bLeg string, aLegs ...string) (*RawResponse, error) {
-	if len(aLegs) == 0 {
-		return nil, errors.New("no aLeg specified")
-	}
-
-	if vars == nil {
-		vars = make(map[string]string)
-	}
-
-	if _, ok := vars["origination_uuid"]; ok {
-		// We cannot set origination uuid globally for all A-legs
-		delete(vars, "origination_uuid")
-	}
-
-	aLeg := strings.Join(aLegs, ":_:")
-
-	response, err := c.SendCommand(ctx, command.API{
-		Command:    "originate",
-		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("<%s>", vars), aLeg, bLeg),
-		Background: background,
-	})
-	if err != nil {
-		return response, err
-	}
-	return response, nil
-}
-
-func (c *Conn) HangupCall(ctx context.Context, uuid, cause string) error {
-	_, err := c.SendCommand(ctx, call.Hangup{
-		UUID:  uuid,
-		Cause: cause,
-		Sync:  false,
-	})
-	return err
-}
-
-func (c *Conn) AnswerCall(ctx context.Context, uuid string) error {
-	_, err := c.SendCommand(ctx, &call.Execute{
-		UUID:    uuid,
-		AppName: "answer",
-		Sync:    true,
-	})
-	return err
 }
 
 // Phrase - Executes the mod_dptools phrase app

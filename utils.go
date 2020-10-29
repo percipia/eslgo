@@ -16,6 +16,11 @@ import (
 )
 
 func BuildVars(format string, vars map[string]string) string {
+	// No vars do not format
+	if vars == nil || len(vars) == 0 {
+		return ""
+	}
+
 	var builder strings.Builder
 	for key, value := range vars {
 		if builder.Len() > 0 {

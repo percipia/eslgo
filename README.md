@@ -54,9 +54,9 @@ func main() {
 func handleConnection(ctx context.Context, conn *eslgo.Conn, response *eslgo.RawResponse) {
 	fmt.Printf("Got connection! %#v\n", response)
 
-	// Place the call to user 100 and playback an audio file as the bLeg and no channel variables
-	originationUUID, response, err := conn.OriginateCall(ctx, false, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
-	fmt.Println("Call Originated: ", originationUUID, response, err)
+	// Place the call in the foreground(api) to user 100 and playback an audio file as the bLeg and no exported variables
+	response, err := conn.OriginateCall(ctx, false, eslgo.Leg{CallURL: "user/100"}, eslgo.Leg{CallURL: "&playback(misc/ivr-to_hear_screaming_monkeys.wav)"}, map[string]string{})
+	fmt.Println("Call Originated: ", response, err)
 }
 ```
 ## Inbound ESL Client
@@ -84,9 +84,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// Place the call to user 100 and playback an audio file as the bLeg
-	originationUUID, response, err := conn.OriginateCall(ctx, true, "user/100", "&playback(misc/ivr-to_hear_screaming_monkeys.wav)", map[string]string{})
-	fmt.Println("Call Originated: ", originationUUID, response, err)
+	// Place the call in the background(bgapi) to user 100 and playback an audio file as the bLeg and no exported variables
+	response, err := conn.OriginateCall(ctx, true, eslgo.Leg{CallURL: "user/100"}, eslgo.Leg{CallURL: "&playback(misc/ivr-to_hear_screaming_monkeys.wav)"}, map[string]string{})
+	fmt.Println("Call Originated: ", response, err)
 
 	// Close the connection after sleeping for a bit
 	time.Sleep(60 * time.Second)
