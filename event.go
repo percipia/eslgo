@@ -73,22 +73,24 @@ func readJSONEvent(body []byte) (*Event, error) {
 	}, nil
 }
 
+// GetName Helper function that returns the event name header
 func (e Event) GetName() string {
 	return e.GetHeader("Event-Name")
 }
 
+// HasHeader Helper to check if the Event has a header
 func (e Event) HasHeader(header string) bool {
 	_, ok := e.Headers[textproto.CanonicalMIMEHeaderKey(header)]
 	return ok
 }
 
-// Helper function that calls e.Header.Get
+// GetHeader Helper function that calls e.Header.Get
 func (e Event) GetHeader(header string) string {
 	value, _ := url.PathUnescape(e.Headers.Get(header))
 	return value
 }
 
-// Implement the Stringer interface for pretty printing (%v)
+// String Implement the Stringer interface for pretty printing (%v)
 func (e Event) String() string {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("%s\n", e.GetName()))
@@ -99,7 +101,7 @@ func (e Event) String() string {
 	return builder.String()
 }
 
-// Implement the GoStringer interface for pretty printing (%#v)
+// GoString Implement the GoStringer interface for pretty printing (%#v)
 func (e Event) GoString() string {
 	return e.String()
 }
