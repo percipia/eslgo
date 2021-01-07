@@ -27,9 +27,8 @@ type Execute struct {
 	SyncPri bool
 }
 
-// Helper to call Execute with Set or Export since it is commonly used
+// Helper to call Execute with Set since it is commonly used
 type Set struct {
-	Export  bool
 	UUID    string
 	Key     string
 	Value   string
@@ -37,18 +36,33 @@ type Set struct {
 	SyncPri bool
 }
 
-func (s Set) BuildMessage() string {
+// Helper to call Execute with Export since it is commonly used
+type Export Set
+
+// Helper to call Execute with Push since it is commonly used
+type Push Set
+
+func (s Set) buildMessage(app string) string {
 	e := Execute{
 		UUID:    s.UUID,
-		AppName: "set",
+		AppName: app,
 		AppArgs: fmt.Sprintf("%s=%s", s.Key, s.Value),
 		Sync:    s.Sync,
 		SyncPri: s.SyncPri,
 	}
-	if s.Export {
-		e.AppName = "export"
-	}
 	return e.BuildMessage()
+}
+
+func (s Set) BuildMessage() string {
+	return s.buildMessage("set")
+}
+
+func (e Export) BuildMessage() string {
+	return Set(e).buildMessage("export")
+}
+
+func (p Push) BuildMessage() string {
+	return Set(p).buildMessage("push")
 }
 
 func (e *Execute) BuildMessage() string {

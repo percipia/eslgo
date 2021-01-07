@@ -13,7 +13,7 @@ eslgo was written from the ground up in idiomatic Go for use in our production p
 go get github.com/percipia/eslgo
 ```
 ```
-github.com/percipia/eslgo v1.2.0
+github.com/percipia/eslgo v1.3.1
 ```
 
 ## Overview

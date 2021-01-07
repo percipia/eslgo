@@ -27,6 +27,16 @@ Call-Command: execute
 Execute-App-Arg: hello=world
 Execute-App-Name: set
 Loops: 1`, "\n", "\r\n")
+	TestExportMessage = strings.ReplaceAll(`sendmsg none
+Call-Command: execute
+Execute-App-Arg: hello=world
+Execute-App-Name: export
+Loops: 1`, "\n", "\r\n")
+	TestPushMessage = strings.ReplaceAll(`sendmsg none
+Call-Command: execute
+Execute-App-Arg: hello=world
+Execute-App-Name: push
+Loops: 1`, "\n", "\r\n")
 )
 
 func TestExecute_BuildMessage(t *testing.T) {
@@ -45,4 +55,22 @@ func TestSet_BuildMessage(t *testing.T) {
 		Value: "world",
 	}
 	assert.Equal(t, TestSetMessage, set.BuildMessage())
+}
+
+func TestExport_BuildMessage(t *testing.T) {
+	export := Export{
+		UUID:  "none",
+		Key:   "hello",
+		Value: "world",
+	}
+	assert.Equal(t, TestExportMessage, export.BuildMessage())
+}
+
+func TestPush_BuildMessage(t *testing.T) {
+	push := Push{
+		UUID:  "none",
+		Key:   "hello",
+		Value: "world",
+	}
+	assert.Equal(t, TestPushMessage, push.BuildMessage())
 }
