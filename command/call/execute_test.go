@@ -24,19 +24,28 @@ Execute-App-Name: playback
 Loops: 1`, "\n", "\r\n")
 	TestSetMessage = strings.ReplaceAll(`sendmsg none
 Call-Command: execute
-Execute-App-Arg: hello=world
+Content-Length: 11
+Content-Type: text/plain
 Execute-App-Name: set
-Loops: 1`, "\n", "\r\n")
+Loops: 1
+
+hello=world`, "\n", "\r\n")
 	TestExportMessage = strings.ReplaceAll(`sendmsg none
 Call-Command: execute
-Execute-App-Arg: hello=world
+Content-Length: 11
+Content-Type: text/plain
 Execute-App-Name: export
-Loops: 1`, "\n", "\r\n")
+Loops: 1
+
+hello=world`, "\n", "\r\n")
 	TestPushMessage = strings.ReplaceAll(`sendmsg none
 Call-Command: execute
-Execute-App-Arg: hello=world
+Content-Length: 11
+Content-Type: text/plain
 Execute-App-Name: push
-Loops: 1`, "\n", "\r\n")
+Loops: 1
+
+hello=world`, "\n", "\r\n")
 )
 
 func TestExecute_BuildMessage(t *testing.T) {
