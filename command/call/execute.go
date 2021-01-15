@@ -18,13 +18,14 @@ import (
 )
 
 type Execute struct {
-	UUID    string
-	AppName string
-	AppArgs string
-	AppUUID string
-	Loops   int
-	Sync    bool
-	SyncPri bool
+	UUID      string
+	AppName   string
+	AppArgs   string
+	AppUUID   string
+	Loops     int
+	Sync      bool
+	SyncPri   bool
+	ForceBody bool
 }
 
 // Helper to call Execute with Set since it is commonly used
@@ -44,11 +45,12 @@ type Push Set
 
 func (s Set) buildMessage(app string) string {
 	e := Execute{
-		UUID:    s.UUID,
-		AppName: app,
-		AppArgs: fmt.Sprintf("%s=%s", s.Key, s.Value),
-		Sync:    s.Sync,
-		SyncPri: s.SyncPri,
+		UUID:      s.UUID,
+		AppName:   app,
+		AppArgs:   fmt.Sprintf("%s=%s", s.Key, s.Value),
+		Sync:      s.Sync,
+		SyncPri:   s.SyncPri,
+		ForceBody: true,
 	}
 	return e.BuildMessage()
 }
@@ -84,7 +86,7 @@ func (e *Execute) BuildMessage() string {
 	}
 
 	// According to documentation that is the max header length
-	if len(e.AppArgs) > 2048 {
+	if len(e.AppArgs) > 2048 || e.ForceBody {
 		sendMsg.Headers.Set("content-type", "text/plain")
 		sendMsg.Headers.Set("content-length", strconv.Itoa(len(e.AppArgs)))
 		sendMsg.Body = e.AppArgs
