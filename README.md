@@ -13,7 +13,7 @@ eslgo was written from the ground up in idiomatic Go for use in our production p
 go get github.com/percipia/eslgo
 ```
 ```
-github.com/percipia/eslgo v1.3.2
+github.com/percipia/eslgo v1.3.3
 ```
 
 ## Overview
@@ -90,6 +90,6 @@ func main() {
 
 	// Close the connection after sleeping for a bit
 	time.Sleep(60 * time.Second)
-	conn.Close()
+	conn.ExitAndClose()
 }
 ```

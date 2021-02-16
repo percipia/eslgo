@@ -35,7 +35,7 @@ func main() {
 	})
 
 	// Ensure all events are enabled
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	_ = conn.EnableEvents(ctx)
 	cancel()
 
@@ -48,7 +48,7 @@ func main() {
 		}
 	}
 
-	// Remove the listener and close the connection
+	// Remove the listener and close the connection gracefully
 	conn.RemoveEventListener(eslgo.EventListenAll, listenerID)
-	conn.Close()
+	conn.ExitAndClose()
 }

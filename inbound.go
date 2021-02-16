@@ -29,9 +29,12 @@ func Dial(address, password string, onDisconnect func()) (*Conn, error) {
 	<-connection.responseChannels[TypeAuthRequest]
 	err = connection.doAuth(connection.runningContext, command.Auth{Password: password})
 	if err != nil {
-		// Try to gracefully disconnect
-		log.Printf("Failed to auth %e\n", err)
-		_, _ = connection.SendCommand(connection.runningContext, command.Exit{})
+		// Try to gracefully disconnect, we have the wrong password.
+		connection.ExitAndClose()
+		if onDisconnect != nil {
+			go onDisconnect()
+		}
+		return nil, err
 	} else {
 		log.Printf("Sucessfully authenticated %s\n", connection.conn.RemoteAddr())
 	}
@@ -47,7 +50,9 @@ func (c *Conn) disconnectLoop(onDisconnect func()) {
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
 		c.Close()
-		defer onDisconnect()
+		if onDisconnect != nil {
+			onDisconnect()
+		}
 		return
 	case <-c.runningContext.Done():
 		return
@@ -60,9 +65,10 @@ func (c *Conn) authLoop(auth command.Auth) {
 		case <-c.responseChannels[TypeAuthRequest]:
 			err := c.doAuth(c.runningContext, auth)
 			if err != nil {
-				// Try to gracefully disconnect
 				log.Printf("Failed to auth %e\n", err)
-				_, _ = c.SendCommand(c.runningContext, command.Exit{})
+				// Close the connection, we have the wrong password
+				c.ExitAndClose()
+				return
 			} else {
 				log.Printf("Sucessfully authenticated %s\n", c.conn.RemoteAddr())
 			}

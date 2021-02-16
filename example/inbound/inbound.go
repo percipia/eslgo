@@ -37,5 +37,5 @@ func main() {
 
 	// Close the connection after sleeping for a bit
 	time.Sleep(60 * time.Second)
-	conn.Close()
+	conn.ExitAndClose()
 }
