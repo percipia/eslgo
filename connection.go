@@ -125,11 +125,13 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 }
 
 func (c *Conn) ExitAndClose() {
-	// Attempt a graceful closing of the connection with FreeSWITCH
-	ctx, cancel := context.WithTimeout(c.runningContext, time.Second)
-	_, _ = c.SendCommand(ctx, command.Exit{})
-	cancel()
-	c.Close()
+	c.closeOnce.Do(func() {
+		// Attempt a graceful closing of the connection with FreeSWITCH
+		ctx, cancel := context.WithTimeout(c.runningContext, time.Second)
+		_, _ = c.SendCommand(ctx, command.Exit{})
+		cancel()
+		c.close()
+	})
 }
 
 func (c *Conn) Close() {
@@ -232,7 +234,7 @@ func (c *Conn) eventLoop() {
 }
 
 func (c *Conn) receiveLoop() {
-	for {
+	for c.runningContext.Err() == nil {
 		response, err := c.readResponse()
 		if err != nil {
 			break
@@ -245,8 +247,8 @@ func (c *Conn) receiveLoop() {
 			break
 		}
 		c.responseChanMutex.RUnlock()
-		if ok {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if ok && c.runningContext.Err() == nil {
+			ctx, cancel := context.WithTimeout(c.runningContext, 5*time.Second)
 			select {
 			case responseChan <- response:
 			case <-c.runningContext.Done():
