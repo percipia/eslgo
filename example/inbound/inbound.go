@@ -19,7 +19,7 @@ import (
 
 func main() {
 	// Connect to FreeSWITCH
-	conn, err := eslgo.Dial("127.0.0.1:8021", "ClueCon", func() {
+	conn, err := eslgo.Dial("127.0.0.1:8021", "ClueCon1", func() {
 		fmt.Println("Inbound Connection Disconnected")
 	})
 	if err != nil {
@@ -37,5 +37,5 @@ func main() {
 
 	// Close the connection after sleeping for a bit
 	time.Sleep(60 * time.Second)
-	conn.Close()
+	conn.ExitAndClose()
 }

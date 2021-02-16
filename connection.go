@@ -56,7 +56,7 @@ func newConnection(c net.Conn, outbound bool) *Conn {
 			TypeEventPlain:  make(chan *RawResponse),
 			TypeEventXML:    make(chan *RawResponse),
 			TypeEventJSON:   make(chan *RawResponse),
-			TypeAuthRequest: make(chan *RawResponse),
+			TypeAuthRequest: make(chan *RawResponse, 1), // Buffered to ensure we do not lose the initial auth request before we are setup to respond
 			TypeDisconnect:  make(chan *RawResponse),
 		},
 		runningContext: runningContext,
@@ -122,6 +122,14 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+func (c *Conn) ExitAndClose() {
+	// Attempt a graceful closing of the connection with FreeSWITCH
+	ctx, cancel := context.WithTimeout(c.runningContext, time.Second)
+	_, _ = c.SendCommand(ctx, command.Exit{})
+	cancel()
+	c.Close()
 }
 
 func (c *Conn) Close() {

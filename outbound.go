@@ -54,7 +54,7 @@ func (c *Conn) outboundHandle(handler OutboundHandler) {
 	if err != nil {
 		log.Printf("Error connecting to %s error %s", c.conn.RemoteAddr().String(), err.Error())
 		// Try closing cleanly first
-		c.Close()
+		c.Close() // Not ExitAndClose since this error connection is most likely from communication failure
 		return
 	}
 	handler(c.runningContext, c, response)
@@ -67,7 +67,7 @@ func (c *Conn) outboundHandle(handler OutboundHandler) {
 	ctx, cancel = context.WithTimeout(c.runningContext, 5*time.Second)
 	_, _ = c.SendCommand(ctx, command.Exit{})
 	cancel()
-	c.Close()
+	c.ExitAndClose()
 }
 
 func (c *Conn) dummyLoop() {
