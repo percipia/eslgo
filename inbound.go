@@ -15,31 +15,41 @@ import (
 	"fmt"
 	"github.com/percipia/eslgo/command"
 	"net"
+	"time"
 )
 
 // InboundOptions - Used to dial a new inbound ESL connection to FreeSWITCH
 type InboundOptions struct {
-	Options             // Generic common options to both Inbound and Outbound Conn
-	Address      string // The address to pass into dial, normally 127.0.0.1:8084
-	Network      string // The network type to use, should always be tcp, tcp4, tcp6.
-	Password     string // The password used to authenticate with FreeSWITCH. Usually ClueCon
-	OnDisconnect func() // An optional function to be called with the inbound connection gets disconnected
+	Options                    // Generic common options to both Inbound and Outbound Conn
+	Network      string        // The network type to use, should always be tcp, tcp4, tcp6.
+	Password     string        // The password used to authenticate with FreeSWITCH. Usually ClueCon
+	OnDisconnect func()        // An optional function to be called with the inbound connection gets disconnected
+	AuthTimeout  time.Duration // How long to wait for authentication to complete
+}
+
+// DefaultOutboundOptions - The default options used for creating the inbound connection
+var DefaultInboundOptions = InboundOptions{
+	Options: Options{
+		Context:     context.Background(),
+		Logger:      NormalLogger{},
+		ExitTimeout: 5 * time.Second,
+	},
+	Network:     "tcp",
+	Password:    "ClueCon",
+	AuthTimeout: 5 * time.Second,
 }
 
 // Dial - Connects to FreeSWITCH ESL at the provided address and authenticates with the provided password. onDisconnect is called when the connection is closed either by us, FreeSWITCH, or network error
 func Dial(address, password string, onDisconnect func()) (*Conn, error) {
-	return InboundOptions{
-		Options:      Options{Logger: NormalLogger{}},
-		Address:      address,
-		Network:      "tcp",
-		Password:     password,
-		OnDisconnect: onDisconnect,
-	}.Dial()
+	opts := DefaultInboundOptions
+	opts.Password = password
+	opts.OnDisconnect = onDisconnect
+	return opts.Dial(address)
 }
 
-// Dial - Connections to FreeSWITCH ESL with the provided options. Returns the connection and any errors encountered
-func (opts InboundOptions) Dial() (*Conn, error) {
-	c, err := net.Dial(opts.Network, opts.Address)
+// Dial - Connects to FreeSWITCH ESL on the address with the provided options. Returns the connection and any errors encountered
+func (opts InboundOptions) Dial(address string) (*Conn, error) {
+	c, err := net.Dial(opts.Network, address)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +57,9 @@ func (opts InboundOptions) Dial() (*Conn, error) {
 
 	// First auth
 	<-connection.responseChannels[TypeAuthRequest]
-	err = connection.doAuth(connection.runningContext, command.Auth{Password: opts.Password})
+	authCtx, cancel := context.WithTimeout(connection.runningContext, opts.AuthTimeout)
+	err = connection.doAuth(authCtx, command.Auth{Password: opts.Password})
+	cancel()
 	if err != nil {
 		// Try to gracefully disconnect, we have the wrong password.
 		connection.ExitAndClose()
@@ -60,7 +72,7 @@ func (opts InboundOptions) Dial() (*Conn, error) {
 	}
 
 	// Inbound only handlers
-	go connection.authLoop(command.Auth{Password: opts.Password})
+	go connection.authLoop(command.Auth{Password: opts.Password}, opts.AuthTimeout)
 	go connection.disconnectLoop(opts.OnDisconnect)
 
 	return connection, nil
@@ -79,11 +91,13 @@ func (c *Conn) disconnectLoop(onDisconnect func()) {
 	}
 }
 
-func (c *Conn) authLoop(auth command.Auth) {
+func (c *Conn) authLoop(auth command.Auth, authTimeout time.Duration) {
 	for {
 		select {
 		case <-c.responseChannels[TypeAuthRequest]:
-			err := c.doAuth(c.runningContext, auth)
+			authCtx, cancel := context.WithTimeout(c.runningContext, authTimeout)
+			err := c.doAuth(authCtx, auth)
+			cancel()
 			if err != nil {
 				c.logger.Warn("Failed to auth %e\n", err)
 				// Close the connection, we have the wrong password

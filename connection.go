@@ -35,12 +35,15 @@ type Conn struct {
 	eventListeners    map[string]map[string]EventListener
 	outbound          bool
 	logger            Logger
+	exitTimeout       time.Duration
 	closeOnce         sync.Once
 }
 
 // Options - Generic options for an ESL connection, either inbound or outbound
 type Options struct {
-	Logger Logger // This specifies the logger to be used for any library internal messages. Can be set to nil to suppress everything.
+	Context     context.Context // This specifies the base running context for the connection. If this context expires all connections will be terminated.
+	Logger      Logger          // This specifies the logger to be used for any library internal messages. Can be set to nil to suppress everything.
+	ExitTimeout time.Duration   // How long should we wait for FreeSWITCH to respond to our "exit" command. 5 seconds is a sane default.
 }
 
 const EndOfMessage = "\r\n\r\n"
@@ -54,7 +57,7 @@ func newConnection(c net.Conn, outbound bool, opts Options) *Conn {
 		opts.Logger = NilLogger{}
 	}
 
-	runningContext, stop := context.WithCancel(context.Background())
+	runningContext, stop := context.WithCancel(opts.Context)
 
 	instance := &Conn{
 		conn:   c,
@@ -74,6 +77,7 @@ func newConnection(c net.Conn, outbound bool, opts Options) *Conn {
 		eventListeners: make(map[string]map[string]EventListener),
 		outbound:       outbound,
 		logger:         opts.Logger,
+		exitTimeout:    opts.ExitTimeout,
 	}
 	go instance.receiveLoop()
 	go instance.eventLoop()
@@ -142,7 +146,7 @@ func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawRe
 func (c *Conn) ExitAndClose() {
 	c.closeOnce.Do(func() {
 		// Attempt a graceful closing of the connection with FreeSWITCH
-		ctx, cancel := context.WithTimeout(c.runningContext, time.Second)
+		ctx, cancel := context.WithTimeout(c.runningContext, c.exitTimeout)
 		_, _ = c.SendCommand(ctx, command.Exit{})
 		cancel()
 		c.close()
