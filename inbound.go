@@ -29,11 +29,7 @@ type InboundOptions struct {
 
 // DefaultOutboundOptions - The default options used for creating the inbound connection
 var DefaultInboundOptions = InboundOptions{
-	Options: Options{
-		Context:     context.Background(),
-		Logger:      NormalLogger{},
-		ExitTimeout: 5 * time.Second,
-	},
+	Options:     DefaultOptions,
 	Network:     "tcp",
 	Password:    "ClueCon",
 	AuthTimeout: 5 * time.Second,

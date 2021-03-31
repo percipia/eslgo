@@ -23,7 +23,7 @@ import (
 
 func TestConn_SendCommand(t *testing.T) {
 	server, client := net.Pipe()
-	connection := newConnection(client, false)
+	connection := newConnection(client, false, DefaultOptions)
 	defer connection.Close()
 	defer server.Close()
 	defer client.Close()

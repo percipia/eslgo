@@ -30,11 +30,7 @@ type OutboundOptions struct {
 
 // DefaultOutboundOptions - The default options used for creating the outbound connection
 var DefaultOutboundOptions = OutboundOptions{
-	Options: Options{
-		Context:     context.Background(),
-		Logger:      NormalLogger{},
-		ExitTimeout: 5 * time.Second,
-	},
+	Options:         DefaultOptions,
 	Network:         "tcp",
 	ConnectTimeout:  5 * time.Second,
 	ConnectionDelay: 25 * time.Millisecond,

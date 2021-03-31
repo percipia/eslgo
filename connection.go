@@ -46,6 +46,13 @@ type Options struct {
 	ExitTimeout time.Duration   // How long should we wait for FreeSWITCH to respond to our "exit" command. 5 seconds is a sane default.
 }
 
+// DefaultOptions - The default options used for creating the connection
+var DefaultOptions = Options{
+	Context:     context.Background(),
+	Logger:      NormalLogger{},
+	ExitTimeout: 5 * time.Second,
+}
+
 const EndOfMessage = "\r\n\r\n"
 
 func newConnection(c net.Conn, outbound bool, opts Options) *Conn {
