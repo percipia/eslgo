@@ -10,6 +10,7 @@
  */
 package command
 
+// Command - A basic interface for FreeSWITCH ESL commands. Implement this if you want to send your own raw data to FreeSIWTCH over the ESL connection. Do not add the eslgo.EndOfMessage(\r\n\r\n) marker, eslgo does that for you.
 type Command interface {
 	BuildMessage() string
 }

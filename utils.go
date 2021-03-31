@@ -15,6 +15,7 @@ import (
 	"strings"
 )
 
+// BuildVars - A helper that builds channel variable strings to be included in various commands to FreeSWITCH
 func BuildVars(format string, vars map[string]string) string {
 	// No vars do not format
 	if vars == nil || len(vars) == 0 {
