@@ -35,6 +35,21 @@ func (c *Conn) EnableEvents(ctx context.Context) error {
 	return err
 }
 
+func (c *Conn) EnableJSONEvents(ctx context.Context) error {
+	var err error
+	if c.outbound {
+		_, err = c.SendCommand(ctx, command.MyEvents{
+			Format: "json",
+		})
+	} else {
+		_, err = c.SendCommand(ctx, command.Event{
+			Format: "json",
+			Listen: []string{"all"},
+		})
+	}
+	return err
+}
+
 // DebugEvents - A helper that will output all events to a logger
 func (c *Conn) DebugEvents(w io.Writer) string {
 	logger := log.New(w, "EventLog: ", log.LstdFlags|log.Lmsgprefix)
