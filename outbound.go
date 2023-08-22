@@ -96,7 +96,11 @@ func (c *Conn) dummyLoop() {
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
 		c.logger.Info("Disconnect outbound connection", c.conn.RemoteAddr())
-		c.Close()
+		if c.closeDelay >= 0 {
+			time.AfterFunc(c.closeDelay*time.Second, func() {
+				c.Close()
+			})
+		}
 	case <-c.responseChannels[TypeAuthRequest]:
 		c.logger.Debug("Ignoring auth request on outbound connection", c.conn.RemoteAddr())
 	case <-c.runningContext.Done():
