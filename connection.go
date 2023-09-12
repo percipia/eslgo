@@ -37,6 +37,7 @@ type Conn struct {
 	logger            Logger
 	exitTimeout       time.Duration
 	closeOnce         sync.Once
+	closeDelay        time.Duration
 }
 
 // Options - Generic options for an ESL connection, either inbound or outbound
@@ -116,14 +117,26 @@ func (c *Conn) RemoveEventListener(channelUUID string, id string) {
 }
 
 // SendCommand - Sends the specified ESL command to FreeSWITCH with the provided context. Returns the response data and any errors encountered.
-func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawResponse, error) {
+func (c *Conn) SendCommand(ctx context.Context, cmd command.Command) (*RawResponse, error) {
 	c.writeLock.Lock()
 	defer c.writeLock.Unlock()
+
+	if linger, ok := cmd.(command.Linger); ok {
+		if linger.Enabled {
+			if linger.Seconds > 0 {
+				c.closeDelay = linger.Seconds
+			} else {
+				c.closeDelay = -1
+			}
+		} else {
+			c.closeDelay = 0
+		}
+	}
 
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = c.conn.SetWriteDeadline(deadline)
 	}
-	_, err := c.conn.Write([]byte(command.BuildMessage() + EndOfMessage))
+	_, err := c.conn.Write([]byte(cmd.BuildMessage() + EndOfMessage))
 	if err != nil {
 		return nil, err
 	}
