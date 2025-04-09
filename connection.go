@@ -20,8 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/percipia/eslgo/command"
+	"github.com/ik5/eslgo/command"
 )
+
+type DisconnectHandler func(ctx context.Context, conn *Conn)
 
 type Conn struct {
 	conn                 net.Conn
@@ -40,6 +42,7 @@ type Conn struct {
 	exitTimeout          time.Duration
 	closeOnce            sync.Once
 	closeDelay           time.Duration
+	onDisconnect         DisconnectHandler
 }
 
 // Options - Generic options for an ESL connection, either inbound or outbound
@@ -92,6 +95,10 @@ func newConnection(c net.Conn, outbound bool, opts Options) *Conn {
 	go instance.receiveLoop()
 	go instance.eventLoop()
 	return instance
+}
+
+func (c *Conn) SetDisconnectHandler(disconnectHandler DisconnectHandler) {
+	c.onDisconnect = disconnectHandler
 }
 
 // RegisterEventListener - Registers a new event listener for the specified channel UUID(or EventListenAll). Returns the registered listener ID used to remove it.
@@ -199,6 +206,10 @@ func (c *Conn) close() {
 
 	// Close the connection only after we have the response channel lock and we have deleted all response channels to ensure we don't receive on a closed channel
 	_ = c.conn.Close()
+
+	if c.onDisconnect != nil {
+		c.onDisconnect(context.Background(), c)
+	}
 }
 
 func (c *Conn) callEventListener(event *Event) {

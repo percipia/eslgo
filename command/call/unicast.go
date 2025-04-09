@@ -11,9 +11,10 @@
 package call
 
 import (
-	"github.com/percipia/eslgo/command"
 	"net"
 	"net/textproto"
+
+	"github.com/ik5/eslgo/command"
 )
 
 /*

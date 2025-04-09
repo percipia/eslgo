@@ -11,9 +11,10 @@
 package eslgo
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_BuildVars(t *testing.T) {

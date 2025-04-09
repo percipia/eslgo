@@ -13,8 +13,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/percipia/eslgo"
 	"time"
+
+	"github.com/ik5/eslgo"
 )
 
 func main() {

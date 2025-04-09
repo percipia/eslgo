@@ -13,9 +13,10 @@ package eslgo
 import (
 	"context"
 	"fmt"
-	"github.com/percipia/eslgo/command"
 	"net"
 	"time"
+
+	"github.com/ik5/eslgo/command"
 )
 
 // InboundOptions - Used to dial a new inbound ESL connection to FreeSWITCH

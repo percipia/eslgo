@@ -11,8 +11,9 @@
 package call
 
 import (
-	"github.com/percipia/eslgo/command"
 	"net/textproto"
+
+	"github.com/ik5/eslgo/command"
 )
 
 // Documentation is sparse on this, but it looks like it transfers a call to an application?

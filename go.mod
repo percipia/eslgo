@@ -1,4 +1,4 @@
-module github.com/percipia/eslgo
+module github.com/ik5/eslgo
 
 go 1.14
 

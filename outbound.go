@@ -13,19 +13,21 @@ package eslgo
 import (
 	"context"
 	"errors"
-	"github.com/percipia/eslgo/command"
 	"net"
 	"time"
+
+	"github.com/ik5/eslgo/command"
 )
 
 type OutboundHandler func(ctx context.Context, conn *Conn, connectResponse *RawResponse)
 
 // OutboundOptions - Used to open a new listener for outbound ESL connections from FreeSWITCH
 type OutboundOptions struct {
-	Options                       // Generic common options to both Inbound and Outbound Conn
-	Network         string        // The network type to listen on, should be tcp, tcp4, or tcp6
-	ConnectTimeout  time.Duration // How long should we wait for FreeSWITCH to respond to our "connect" command. 5 seconds is a sane default.
-	ConnectionDelay time.Duration // How long should we wait after connection to start sending commands. 25ms is the recommended default otherwise we can close the connection before FreeSWITCH finishes starting it on their end. https://github.com/signalwire/freeswitch/pull/636
+	Options                           // Generic common options to both Inbound and Outbound Conn
+	Network         string            // The network type to listen on, should be tcp, tcp4, or tcp6
+	ConnectTimeout  time.Duration     // How long should we wait for FreeSWITCH to respond to our "connect" command. 5 seconds is a sane default.
+	ConnectionDelay time.Duration     // How long should we wait after connection to start sending commands. 25ms is the recommended default otherwise we can close the connection before FreeSWITCH finishes starting it on their end. https://github.com/signalwire/freeswitch/pull/636
+	OnDisconnect    DisconnectHandler // Callback to be executed when a socket is disconnected
 }
 
 // DefaultOutboundOptions - The default options used for creating the outbound connection
@@ -95,14 +97,14 @@ func (c *Conn) outboundHandle(handler OutboundHandler, connectionDelay, connectT
 func (c *Conn) dummyLoop() {
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
-		c.logger.Info("Disconnect outbound connection", c.conn.RemoteAddr())
+		c.logger.Info("Disconnect outbound connection: %s", c.conn.RemoteAddr())
 		if c.closeDelay >= 0 {
 			time.AfterFunc(c.closeDelay*time.Second, func() {
 				c.Close()
 			})
 		}
 	case <-c.responseChannels[TypeAuthRequest]:
-		c.logger.Debug("Ignoring auth request on outbound connection", c.conn.RemoteAddr())
+		c.logger.Debug("Ignoring auth request on outbound connection: %s", c.conn.RemoteAddr())
 	case <-c.runningContext.Done():
 		return
 	}

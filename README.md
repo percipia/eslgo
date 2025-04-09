@@ -10,10 +10,10 @@ eslgo was written from the ground up in idiomatic Go for use in our production p
 
 ## Install
 ```
-go get github.com/percipia/eslgo
+go get github.com/ik5/eslgo
 ```
 ```
-github.com/percipia/eslgo v1.4.1
+github.com/ik5/eslgo v1.4.1
 ```
 
 ## Overview
@@ -42,7 +42,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/percipia/eslgo"
+	"github.com/ik5/eslgo"
 	"log"
 )
 
@@ -66,7 +66,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/percipia/eslgo"
+	"github.com/ik5/eslgo"
 	"time"
 )
 

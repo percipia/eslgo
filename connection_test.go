@@ -13,12 +13,13 @@ package eslgo
 import (
 	"bufio"
 	"context"
-	"github.com/percipia/eslgo/command"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ik5/eslgo/command"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConn_SendCommand(t *testing.T) {
