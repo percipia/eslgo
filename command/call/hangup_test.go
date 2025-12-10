@@ -25,5 +25,5 @@ func TestHangup_BuildMessage(t *testing.T) {
 		UUID:  "none",
 		Cause: "NORMAL_CLEARING",
 	}
-	assert.Equal(t, TestHangupMessage, hangup.BuildMessage())
+	assert.Equal(t, normalizeMessage(TestHangupMessage), normalizeMessage(hangup.BuildMessage()))
 }

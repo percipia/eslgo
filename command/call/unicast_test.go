@@ -11,10 +11,11 @@
 package call
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var TestUnicastMessage = strings.ReplaceAll(`sendmsg none
@@ -35,5 +36,5 @@ func TestUnicast_BuildMessage(t *testing.T) {
 		Remote: testRemote,
 		Flags:  "native",
 	}
-	assert.Equal(t, TestUnicastMessage, unicast.BuildMessage())
+	assert.Equal(t, normalizeMessage(TestUnicastMessage), normalizeMessage(unicast.BuildMessage()))
 }

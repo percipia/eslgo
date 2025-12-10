@@ -12,9 +12,10 @@ package call
 
 import (
 	"fmt"
-	"github.com/percipia/eslgo/command"
 	"net/textproto"
 	"strconv"
+
+	"github.com/percipia/eslgo/command"
 )
 
 type Execute struct {
@@ -73,7 +74,7 @@ func (e *Execute) BuildMessage() string {
 	}
 	sendMsg := command.SendMessage{
 		UUID:    e.UUID,
-		Headers: make(textproto.MIMEHeader),
+		Headers: make(textproto.MIMEHeader, 4), // preallocating for the 4+ headers that are always set to reduce amount of dynamic allocations
 		Sync:    e.Sync,
 		SyncPri: e.SyncPri,
 	}
@@ -87,8 +88,7 @@ func (e *Execute) BuildMessage() string {
 
 	// According to documentation that is the max header length
 	if len(e.AppArgs) > 2048 || e.ForceBody {
-		sendMsg.Headers.Set("content-type", "text/plain")
-		sendMsg.Headers.Set("content-length", strconv.Itoa(len(e.AppArgs)))
+		sendMsg.Headers.Set("Content-Type", "text/plain")
 		sendMsg.Body = e.AppArgs
 	} else {
 		sendMsg.Headers.Set("execute-app-arg", e.AppArgs)

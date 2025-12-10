@@ -26,6 +26,7 @@ var crlfToLF = strings.NewReplacer("\r\n", "\n")
 // FormatHeaderString - Writes headers in a FreeSWITCH ESL friendly format. Converts headers containing \r\n to \n
 func FormatHeaderString(headers textproto.MIMEHeader) string {
 	var ws strings.Builder
+	ws.Grow(estimateSize(headers))
 
 	keys := make([]string, len(headers))
 	i := 0
@@ -46,5 +47,17 @@ func FormatHeaderString(headers textproto.MIMEHeader) string {
 		}
 	}
 	// Remove the extra \r\n
-	return ws.String()[:ws.Len()-2]
+	str := ws.String()
+	return str[:len(str)-2]
+}
+
+// helper for FormatHeaderString that estimates the size of the final header string to avoid multiple allocations
+func estimateSize(headers textproto.MIMEHeader) int {
+	size := 0
+	for key, values := range headers {
+		for _, value := range values {
+			size += len(key) + len(value) + 4 // 4 extra characters for ": " and "\r\n"
+		}
+	}
+	return size
 }

@@ -14,9 +14,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/percipia/eslgo/command"
 	"github.com/percipia/eslgo/command/call"
-	"strings"
 )
 
 // Leg This struct is used to specify the individual legs of a call for the originate helpers
@@ -79,6 +80,29 @@ func (c *Conn) EnterpriseOriginateCall(ctx context.Context, background bool, var
 	response, err := c.SendCommand(ctx, command.API{
 		Command:    "originate",
 		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("<%s>", vars), aLeg.String(), bLeg.String()),
+		Background: background,
+	})
+
+	return response, err
+}
+
+// BackgroundOriginateCall - Calls the originate function in FreeSWITCH asynchronously. If you want variables for each leg independently set them in the aLeg and bLeg
+// Arguments: ctx context.Context for supporting context cancellation, background bool should we wait for the origination to complete
+// aLeg, bLeg Leg The aLeg and bLeg of the call respectively
+// vars map[string]string, channel variables to be passed to originate for both legs, contained in {}
+func (c *Conn) BackgroundOriginateCall(ctx context.Context, background bool, aLeg, bLeg Leg, vars map[string]string) (*RawResponse, error) {
+	if vars == nil {
+		vars = make(map[string]string)
+	}
+
+	if _, ok := vars["origination_uuid"]; ok {
+		// We cannot set origination uuid globally
+		delete(vars, "origination_uuid")
+	}
+
+	response, err := c.SendCommand(ctx, command.API{
+		Command:    "bgapi originate",
+		Arguments:  fmt.Sprintf("%s%s %s", BuildVars("{%s}", vars), aLeg.String(), bLeg.String()),
 		Background: background,
 	})
 

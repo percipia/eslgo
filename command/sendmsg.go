@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/textproto"
 	"strconv"
+	"strings"
 )
 
 type SendMessage struct {
@@ -25,28 +26,39 @@ type SendMessage struct {
 }
 
 func (s *SendMessage) BuildMessage() string {
+	var headers []string
+
 	if s.Headers == nil {
 		s.Headers = make(textproto.MIMEHeader)
 	}
+
 	// Waits for this event to finish before continuing even in async mode
 	if s.Sync {
-		s.Headers.Set("event-lock", "true")
+		headers = append(headers, "event-lock: true")
 	}
+
 	// No documentation on this flag, I assume it takes priority over the other flag?
 	if s.SyncPri {
-		s.Headers.Set("event-lock-pri", "true")
+		headers = append(headers, "event-lock-pri: true")
 	}
 
 	// Ensure the correct content length is set in the header
 	if len(s.Body) > 0 {
-		s.Headers.Set("Content-Length", strconv.Itoa(len(s.Body)))
+		headers = append(headers, "Content-Length: "+strconv.Itoa(len(s.Body)))
 	} else {
 		delete(s.Headers, "Content-Length")
 	}
 
 	// Format the headers
-	headerString := FormatHeaderString(s.Headers)
-	if _, ok := s.Headers["Content-Length"]; ok {
+	for key, values := range s.Headers {
+		for _, value := range values {
+			headers = append(headers, key+": "+value)
+		}
+	}
+
+	headerString := strings.Join(headers, "\r\n")
+
+	if len(s.Body) > 0 {
 		return fmt.Sprintf("sendmsg %s\r\n%s\r\n\r\n%s", s.UUID, headerString, s.Body)
 	}
 	return fmt.Sprintf("sendmsg %s\r\n%s", s.UUID, headerString)

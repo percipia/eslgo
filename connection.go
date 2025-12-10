@@ -14,29 +14,32 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"github.com/google/uuid"
-	"github.com/percipia/eslgo/command"
+	"fmt"
 	"net"
 	"net/textproto"
 	"sync"
 	"time"
+
+	"github.com/percipia/eslgo/command"
 )
 
 type Conn struct {
-	conn              net.Conn
-	reader            *bufio.Reader
-	header            *textproto.Reader
-	writeLock         sync.Mutex
-	runningContext    context.Context
-	stopFunc          func()
-	responseChannels  map[string]chan *RawResponse
-	responseChanMutex sync.RWMutex
-	eventListenerLock sync.RWMutex
-	eventListeners    map[string]map[string]EventListener
-	outbound          bool
-	logger            Logger
-	exitTimeout       time.Duration
-	closeOnce         sync.Once
+	conn                 net.Conn
+	reader               *bufio.Reader
+	header               *textproto.Reader
+	writeLock            sync.Mutex
+	runningContext       context.Context
+	stopFunc             func()
+	responseChannels     map[string]chan *RawResponse
+	responseChanMutex    sync.RWMutex
+	eventListenerLock    sync.RWMutex
+	eventListeners       map[string]map[string]EventListener
+	eventListenerCounter int
+	outbound             bool
+	logger               Logger
+	exitTimeout          time.Duration
+	closeOnce            sync.Once
+	closeDelay           time.Duration
 }
 
 // Options - Generic options for an ESL connection, either inbound or outbound
@@ -96,7 +99,8 @@ func (c *Conn) RegisterEventListener(channelUUID string, listener EventListener)
 	c.eventListenerLock.Lock()
 	defer c.eventListenerLock.Unlock()
 
-	id := uuid.New().String()
+	c.eventListenerCounter++
+	id := fmt.Sprintf("%d", c.eventListenerCounter)
 	if _, ok := c.eventListeners[channelUUID]; ok {
 		c.eventListeners[channelUUID][id] = listener
 	} else {
@@ -116,30 +120,48 @@ func (c *Conn) RemoveEventListener(channelUUID string, id string) {
 }
 
 // SendCommand - Sends the specified ESL command to FreeSWITCH with the provided context. Returns the response data and any errors encountered.
-func (c *Conn) SendCommand(ctx context.Context, command command.Command) (*RawResponse, error) {
-	c.writeLock.Lock()
-	defer c.writeLock.Unlock()
+func (c *Conn) SendCommand(ctx context.Context, cmd command.Command) (*RawResponse, error) {
+	if linger, ok := cmd.(command.Linger); ok {
+		c.writeLock.Lock()
+		if linger.Enabled {
+			if linger.Seconds > 0 {
+				c.closeDelay = linger.Seconds
+			} else {
+				c.closeDelay = -1
+			}
+		} else {
+			c.closeDelay = 0
+		}
+		c.writeLock.Unlock()
+	}
 
-	if deadline, ok := ctx.Deadline(); ok {
+	deadline, ok := ctx.Deadline()
+	c.writeLock.Lock()
+	if ok {
 		_ = c.conn.SetWriteDeadline(deadline)
 	}
-	_, err := c.conn.Write([]byte(command.BuildMessage() + EndOfMessage))
+	_, err := c.conn.Write([]byte(cmd.BuildMessage() + EndOfMessage))
 	if err != nil {
+		c.writeLock.Unlock()
 		return nil, err
 	}
+	if ok {
+		_ = c.conn.SetWriteDeadline(time.Time{})
+	}
+	c.writeLock.Unlock()
 
 	// Get response
 	c.responseChanMutex.RLock()
 	defer c.responseChanMutex.RUnlock()
 	select {
-	case response := <-c.responseChannels[TypeReply]:
-		if response == nil {
+	case response, ok := <-c.responseChannels[TypeReply]:
+		if !ok || response == nil {
 			// We only get nil here if the channel is closed
 			return nil, errors.New("connection closed")
 		}
 		return response, nil
-	case response := <-c.responseChannels[TypeAPIResponse]:
-		if response == nil {
+	case response, ok := <-c.responseChannels[TypeAPIResponse]:
+		if !ok || response == nil {
 			// We only get nil here if the channel is closed
 			return nil, errors.New("connection closed")
 		}
@@ -268,6 +290,23 @@ func (c *Conn) receiveLoop() {
 		err := c.doMessage()
 		if err != nil {
 			c.logger.Warn("Error receiving message: %s\n", err.Error())
+			// when err.Error() is EOF we should trigger event to responseChannel and exit the loop
+			// because the connection is closed
+			if err.Error() == "EOF" {
+				// send signal to c.responseChannels[TypeDisconnect]
+				c.logger.Warn("Connection closed, stopping receive loop\n")
+				select {
+				case c.responseChannels[TypeDisconnect] <- &RawResponse{
+					Headers: textproto.MIMEHeader{
+						"Content-Type": []string{TypeDisconnect},
+						"Error":        []string{err.Error()},
+					},
+					Body: []byte("connection closed: " + err.Error()),
+				}:
+				default:
+				}
+				return
+			}
 			break
 		}
 	}

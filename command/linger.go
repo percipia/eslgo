@@ -10,12 +10,21 @@
  */
 package command
 
+import (
+	"fmt"
+	"time"
+)
+
 type Linger struct {
 	Enabled bool
+	Seconds time.Duration
 }
 
 func (l Linger) BuildMessage() string {
 	if l.Enabled {
+		if l.Seconds > 0 {
+			return fmt.Sprintf("linger %d", l.Seconds)
+		}
 		return "linger"
 	}
 	return "nolinger"

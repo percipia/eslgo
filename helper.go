@@ -14,21 +14,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/percipia/eslgo/command"
-	"github.com/percipia/eslgo/command/call"
 	"io"
 	"log"
+	"time"
+
+	"github.com/percipia/eslgo/command"
+	"github.com/percipia/eslgo/command/call"
 )
 
-func (c *Conn) EnableEvents(ctx context.Context) error {
+func (c *Conn) EnableEvents(ctx context.Context, format ...string) error {
 	var err error
+	eventFormat := "plain" // default to plain text
+	if len(format) > 0 && format[0] != "" {
+		eventFormat = format[0]
+	}
+
 	if c.outbound {
 		_, err = c.SendCommand(ctx, command.MyEvents{
-			Format: "plain",
+			Format: eventFormat,
 		})
 	} else {
 		_, err = c.SendCommand(ctx, command.Event{
-			Format: "plain",
+			Format: eventFormat,
 			Listen: []string{"all"},
 		})
 	}
@@ -79,9 +86,17 @@ func (c *Conn) WaitForDTMF(ctx context.Context, uuid string) (byte, error) {
 		if event.GetName() == "DTMF" {
 			dtmf := event.GetHeader("DTMF-Digit")
 			if len(dtmf) > 0 {
-				done <- dtmf[0]
+				select {
+				case done <- dtmf[0]:
+				default:
+				}
+			} else {
+				select {
+				case done <- 0:
+				default:
+				}
 			}
-			done <- 0
+			time.Sleep(10 * time.Millisecond)
 		}
 	})
 	defer func() {

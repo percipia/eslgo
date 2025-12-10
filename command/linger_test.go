@@ -20,5 +20,5 @@ func TestNoLinger_BuildMessage(t *testing.T) {
 }
 
 func TestLinger_BuildMessage(t *testing.T) {
-	assert.Equal(t, "linger", Linger{true}.BuildMessage())
+	assert.Equal(t, "linger", Linger{Enabled: true}.BuildMessage())
 }

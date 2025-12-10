@@ -11,9 +11,10 @@
 package call
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var TestNoMediaMessage = strings.ReplaceAll(`sendmsg none
@@ -25,5 +26,5 @@ func TestNoMedia_BuildMessage(t *testing.T) {
 		UUID:        "none",
 		NoMediaUUID: "test",
 	}
-	assert.Equal(t, TestNoMediaMessage, nomedia.BuildMessage())
+	assert.Equal(t, normalizeMessage(TestNoMediaMessage), normalizeMessage(nomedia.BuildMessage()))
 }
