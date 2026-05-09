@@ -56,3 +56,25 @@ func TestConn_SendCommand(t *testing.T) {
 	assert.Nil(t, err)
 	wait.Wait()
 }
+
+func TestReceiveLoop_NoRaceOnEOF(t *testing.T) {
+	server, client := net.Pipe()
+	connection := newConnection(client, false, DefaultOptions)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(20 * time.Millisecond)
+		server.Close()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(30 * time.Millisecond)
+		connection.Close()
+	}()
+
+	wg.Wait()
+}
