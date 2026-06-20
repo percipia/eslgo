@@ -99,10 +99,11 @@ func (c *Conn) WaitForDTMF(ctx context.Context, uuid string) (byte, error) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	})
-	defer func() {
-		c.RemoveEventListener(uuid, listenerID)
-		close(done)
-	}()
+	// Do not close(done) here: a listener goroutine dispatched by
+	// callEventListener may still be running after RemoveEventListener
+	// returns and would panic sending on a closed channel. The buffered
+	// channel is collected once it is no longer referenced.
+	defer c.RemoveEventListener(uuid, listenerID)
 
 	select {
 	case digit := <-done:
