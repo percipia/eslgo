@@ -50,12 +50,35 @@ func (opts InboundOptions) Dial(address string) (*Conn, error) {
 		return nil, err
 	}
 	connection := newConnection(c, false, opts.Options)
+	notifyPreAuthDisconnect := func() {
+		connection.Close()
+		if opts.OnDisconnect != nil {
+			go opts.OnDisconnect()
+		}
+	}
 
 	// First auth
-	<-connection.responseChannels[TypeAuthRequest]
 	authCtx, cancel := context.WithTimeout(connection.runningContext, opts.AuthTimeout)
+	defer cancel()
+
+	select {
+	case _, ok := <-connection.responseChannels[TypeAuthRequest]:
+		if !ok {
+			notifyPreAuthDisconnect()
+			return nil, fmt.Errorf("connection closed before auth request")
+		}
+	case response, ok := <-connection.responseChannels[TypeDisconnect]:
+		notifyPreAuthDisconnect()
+		if ok && response != nil {
+			return nil, fmt.Errorf("connection disconnected before auth request: %s", response.GetHeader("Error"))
+		}
+		return nil, fmt.Errorf("connection disconnected before auth request")
+	case <-authCtx.Done():
+		notifyPreAuthDisconnect()
+		return nil, authCtx.Err()
+	}
+
 	err = connection.doAuth(authCtx, command.Auth{Password: opts.Password})
-	cancel()
 	if err != nil {
 		// Try to gracefully disconnect, we have the wrong password.
 		connection.ExitAndClose()
