@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 
 	"github.com/percipia/eslgo/command"
 	"github.com/percipia/eslgo/command/call"
@@ -85,24 +84,17 @@ func (c *Conn) WaitForDTMF(ctx context.Context, uuid string) (byte, error) {
 	listenerID := c.RegisterEventListener(uuid, func(event *Event) {
 		if event.GetName() == "DTMF" {
 			dtmf := event.GetHeader("DTMF-Digit")
+			var digit byte
 			if len(dtmf) > 0 {
-				select {
-				case done <- dtmf[0]:
-				default:
-				}
-			} else {
-				select {
-				case done <- 0:
-				default:
-				}
+				digit = dtmf[0]
 			}
-			time.Sleep(10 * time.Millisecond)
+			select {
+			case done <- digit:
+			default:
+			}
 		}
 	})
-	defer func() {
-		c.RemoveEventListener(uuid, listenerID)
-		close(done)
-	}()
+	defer c.RemoveEventListener(uuid, listenerID)
 
 	select {
 	case digit := <-done:
