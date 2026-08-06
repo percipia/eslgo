@@ -36,7 +36,11 @@ type RawResponse struct {
 }
 
 func (c *Conn) readResponse() (*RawResponse, error) {
-	header, err := c.header.ReadMIMEHeader()
+	// Lenient parsing here as well: outbound connections receive the full channel
+	// data (including every channel variable) as headers on the "connect" reply,
+	// so a single variable name with special characters would otherwise fail the
+	// whole response.
+	header, err := readESLMIMEHeader(c.header)
 	if err != nil {
 		return nil, err
 	}
