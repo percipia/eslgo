@@ -306,7 +306,7 @@ func (c *Conn) receiveLoop() {
 				default:
 				}
 			}
-			return
+			break
 		}
 	}
 }
