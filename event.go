@@ -13,6 +13,7 @@ package eslgo
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/textproto"
@@ -36,7 +37,11 @@ func readPlainEvent(body []byte) (*Event, error) {
 	reader := bufio.NewReader(bytes.NewBuffer(body))
 	header := textproto.NewReader(reader)
 
-	headers, err := header.ReadMIMEHeader()
+	// Use the lenient ESL header parser instead of ReadMIMEHeader. FreeSWITCH
+	// permits characters in variable names (for example "variable_fish,(sticks)~_1")
+	// that net/textproto rejects, which previously caused the entire event to be
+	// discarded with a MIME parsing error.
+	headers, err := readESLMIMEHeader(header)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +71,61 @@ func readXMLEvent(body []byte) (*Event, error) {
 	}, nil
 }
 
-// TODO: Needs processing
+/*
+ * readJSONEvent parses a text/event-json payload into the same Event shape the
+ * plaintext parser produces, so callers get Headers populated instead of having
+ * to unmarshal the body themselves.
+ *
+ * FreeSWITCH emits the event as a flat JSON object of header name to value. The
+ * special "_body" key carries the event body when one is present, matching the
+ * Content-Length body of the plaintext format. Header names are canonicalized
+ * with the same rules as the plaintext path, so Get/HasHeader behave identically
+ * regardless of the negotiated event format.
+ */
 func readJSONEvent(body []byte) (*Event, error) {
-	return &Event{
+	event := &Event{
 		Headers: make(textproto.MIMEHeader),
-		Body:    body,
-	}, nil
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		// Keep the raw payload so nothing is silently lost if FreeSWITCH sends
+		// something we cannot decode.
+		event.Body = body
+		return event, err
+	}
+
+	for key, raw := range decoded {
+		value, ok := jsonHeaderValue(raw)
+		if !ok {
+			continue
+		}
+		if key == "_body" {
+			event.Body = []byte(value)
+			continue
+		}
+		canonical := canonicalESLHeaderKey(key)
+		event.Headers[canonical] = append(event.Headers[canonical], value)
+	}
+
+	return event, nil
+}
+
+// jsonHeaderValue converts a decoded JSON value into its ESL header string form.
+// Objects and arrays are skipped since FreeSWITCH event headers are always scalar.
+func jsonHeaderValue(raw interface{}) (string, bool) {
+	switch v := raw.(type) {
+	case string:
+		return v, true
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64), true
+	case bool:
+		return strconv.FormatBool(v), true
+	case nil:
+		return "", true
+	default:
+		return "", false
+	}
 }
 
 // GetName Helper function that returns the event name header
