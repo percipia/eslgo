@@ -290,24 +290,21 @@ func (c *Conn) receiveLoop() {
 		err := c.doMessage()
 		if err != nil {
 			c.logger.Warn("Error receiving message: %s\n", err.Error())
-			if err.Error() == "EOF" {
-				c.logger.Warn("Connection closed, stopping receive loop\n")
-				c.responseChanMutex.RLock()
-				defer c.responseChanMutex.RUnlock()
-				disconnectCh, ok := c.responseChannels[TypeDisconnect]
-				if ok {
-					select {
-					case disconnectCh <- &RawResponse{
-						Headers: textproto.MIMEHeader{
-							"Content-Type": []string{TypeDisconnect},
-							"Error":        []string{err.Error()},
-						},
-						Body: []byte("connection closed: " + err.Error()),
-					}:
-					default:
-					}
+			c.logger.Warn("Connection error, stopping receive loop\n")
+			c.responseChanMutex.RLock()
+			defer c.responseChanMutex.RUnlock()
+			disconnectCh, ok := c.responseChannels[TypeDisconnect]
+			if ok {
+				select {
+				case disconnectCh <- &RawResponse{
+					Headers: textproto.MIMEHeader{
+						"Content-Type": []string{TypeDisconnect},
+						"Error":        []string{err.Error()},
+					},
+					Body: []byte("connection closed: " + err.Error()),
+				}:
+				default:
 				}
-				return
 			}
 			break
 		}

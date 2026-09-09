@@ -57,6 +57,44 @@ func TestConn_SendCommand(t *testing.T) {
 	wait.Wait()
 }
 
+func TestReceiveLoop_UnexpectedEOF(t *testing.T) {
+	server, client := net.Pipe()
+
+	disconnected := make(chan struct{})
+	opts := DefaultInboundOptions
+	opts.Password = "ClueCon"
+	opts.OnDisconnect = func() {
+		close(disconnected)
+	}
+
+	connection := newConnection(client, false, opts.Options)
+	go connection.disconnectLoop(opts.OnDisconnect)
+
+	// Send auth/request so eslgo is in a normal state, then send a partial
+	// response: headers with Content-Length but a truncated body. When the
+	// server closes the connection, io.ReadFull returns "unexpected EOF".
+	_, err := server.Write([]byte("Content-Type: auth/request\r\n\r\n"))
+	assert.NoError(t, err)
+
+	// Give the connection a moment to process the auth request
+	time.Sleep(50 * time.Millisecond)
+
+	// Send a response with Content-Length: 100 but only 10 bytes of body,
+	// then close the server side to trigger unexpected EOF in io.ReadFull.
+	_, err = server.Write([]byte("Content-Type: command/reply\r\nContent-Length: 100\r\n\r\n0123456789"))
+	assert.NoError(t, err)
+	server.Close()
+
+	select {
+	case <-disconnected:
+		// onDisconnect fired — this is the expected behavior
+	case <-time.After(5 * time.Second):
+		t.Fatal("onDisconnect was not called after unexpected EOF")
+	}
+
+	connection.Close()
+}
+
 func TestReceiveLoop_NoRaceOnEOF(t *testing.T) {
 	server, client := net.Pipe()
 	connection := newConnection(client, false, DefaultOptions)
