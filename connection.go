@@ -292,6 +292,7 @@ func (c *Conn) receiveLoop() {
 			c.logger.Warn("Error receiving message: %s\n", err.Error())
 			c.logger.Warn("Connection error, stopping receive loop\n")
 			c.responseChanMutex.RLock()
+			defer c.responseChanMutex.RUnlock()
 			disconnectCh, ok := c.responseChannels[TypeDisconnect]
 			if ok {
 				select {
@@ -305,7 +306,6 @@ func (c *Conn) receiveLoop() {
 				default:
 				}
 			}
-			c.responseChanMutex.RUnlock()
 			return
 		}
 	}
