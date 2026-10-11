@@ -93,8 +93,13 @@ func (c *Conn) outboundHandle(handler OutboundHandler, connectionDelay, connectT
 }
 
 func (c *Conn) dummyLoop() {
+	// Same lock discipline as the inbound loops: guard both map reads against
+	// close()'s map delete, keep the Done() exit so close() can acquire the
+	// write lock, and drop the read lock before any case body work.
+	c.responseChanMutex.RLock()
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
+		c.responseChanMutex.RUnlock()
 		c.logger.Info("Disconnect outbound connection", c.conn.RemoteAddr())
 		if c.closeDelay >= 0 {
 			time.AfterFunc(c.closeDelay*time.Second, func() {
@@ -102,8 +107,10 @@ func (c *Conn) dummyLoop() {
 			})
 		}
 	case <-c.responseChannels[TypeAuthRequest]:
+		c.responseChanMutex.RUnlock()
 		c.logger.Debug("Ignoring auth request on outbound connection", c.conn.RemoteAddr())
 	case <-c.runningContext.Done():
+		c.responseChanMutex.RUnlock()
 		return
 	}
 }

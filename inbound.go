@@ -61,19 +61,30 @@ func (opts InboundOptions) Dial(address string) (*Conn, error) {
 	authCtx, cancel := context.WithTimeout(connection.runningContext, opts.AuthTimeout)
 	defer cancel()
 
+	// The map lookups below race with (*Conn).close(), which deletes every
+	// responseChannels entry. close() cancels runningContext (parent of
+	// authCtx) before taking the write lock, so the ctx.Done() case below is
+	// guaranteed to fire and release this read lock — never remove it, doing
+	// so would deadlock close(). The lock is dropped in each case before any
+	// body work: the bodies call Close/ExitAndClose, which need the write
+	// lock (same discipline as eventLoop).
+	connection.responseChanMutex.RLock()
 	select {
 	case _, ok := <-connection.responseChannels[TypeAuthRequest]:
+		connection.responseChanMutex.RUnlock()
 		if !ok {
 			notifyPreAuthDisconnect()
 			return nil, fmt.Errorf("connection closed before auth request")
 		}
 	case response, ok := <-connection.responseChannels[TypeDisconnect]:
+		connection.responseChanMutex.RUnlock()
 		notifyPreAuthDisconnect()
 		if ok && response != nil {
 			return nil, fmt.Errorf("connection disconnected before auth request: %s", response.GetHeader("Error"))
 		}
 		return nil, fmt.Errorf("connection disconnected before auth request")
 	case <-authCtx.Done():
+		connection.responseChanMutex.RUnlock()
 		notifyPreAuthDisconnect()
 		return nil, authCtx.Err()
 	}
@@ -98,22 +109,33 @@ func (opts InboundOptions) Dial(address string) (*Conn, error) {
 }
 
 func (c *Conn) disconnectLoop(onDisconnect func()) {
+	// Map read guarded against close()'s map delete; Done() exit releases the
+	// read lock, unlock precedes the Close() call which needs the write lock.
+	c.responseChanMutex.RLock()
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
+		c.responseChanMutex.RUnlock()
 		c.Close()
 		if onDisconnect != nil {
 			onDisconnect()
 		}
 		return
 	case <-c.runningContext.Done():
+		c.responseChanMutex.RUnlock()
 		return
 	}
 }
 
 func (c *Conn) authLoop(auth command.Auth, authTimeout time.Duration) {
 	for {
+		// Same lock discipline as disconnectLoop: guard the map read, keep the
+		// Done() exit so close() can acquire the write lock, and drop the read
+		// lock before the case body — doAuth takes the read lock itself and
+		// ExitAndClose needs the write lock (RLock is not reentrant-safe here).
+		c.responseChanMutex.RLock()
 		select {
 		case <-c.responseChannels[TypeAuthRequest]:
+			c.responseChanMutex.RUnlock()
 			authCtx, cancel := context.WithTimeout(c.runningContext, authTimeout)
 			err := c.doAuth(authCtx, auth)
 			cancel()
@@ -126,6 +148,7 @@ func (c *Conn) authLoop(auth command.Auth, authTimeout time.Duration) {
 				c.logger.Info("Successfully authenticated %s\n", c.conn.RemoteAddr())
 			}
 		case <-c.runningContext.Done():
+			c.responseChanMutex.RUnlock()
 			return
 		}
 	}
