@@ -103,16 +103,6 @@ func listenTCP(t *testing.T) net.Listener {
 	return listener
 }
 
-// TestInboundDial_CloseWhileWaitingForAuthRequest exercises the first two
-// guarded responseChannels read sites: the map lookups in Dial's pre-auth
-// select. When the server hangs up before sending the auth request, the
-// disconnect message must wake that select, Dial must fail with the
-// "before auth request" error, and OnDisconnect must fire. This guards the
-// behavior of those read sites under the responseChanMutex fix; the
-// concurrent DATA RACE reproduction lives in
-// TestInboundDial_CloseRightAfterSuccessfulAuth and
-// TestOutbound_CloseWhileConnectionIsServed, where the closing side runs on
-// a different goroutine than the readers.
 func TestInboundDial_CloseWhileWaitingForAuthRequest(t *testing.T) {
 	for i := 0; i < 25; i++ {
 		listener := listenTCP(t)
@@ -148,13 +138,6 @@ func TestInboundDial_CloseWhileWaitingForAuthRequest(t *testing.T) {
 	}
 }
 
-// TestInboundDial_CloseRightAfterSuccessfulAuth hammers the window where the
-// loops spawned by Dial (authLoop, disconnectLoop) evaluate their
-// responseChannels map lookups while (*Conn).close deletes those entries.
-// Run with -race: without the read-side RLocks this reliably reports a DATA
-// RACE between the selects in the loops and the delete in close. Each
-// iteration also proves the happy path still works: the connection
-// authenticates against a loopback fake and is then torn down cleanly.
 func TestInboundDial_CloseRightAfterSuccessfulAuth(t *testing.T) {
 	for i := 0; i < 25; i++ {
 		listener := listenTCP(t)
