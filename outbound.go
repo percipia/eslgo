@@ -93,9 +93,7 @@ func (c *Conn) outboundHandle(handler OutboundHandler, connectionDelay, connectT
 }
 
 func (c *Conn) dummyLoop() {
-	// Same lock discipline as the inbound loops: guard both map reads against
-	// close()'s map delete, keep the Done() exit so close() can acquire the
-	// write lock, and drop the read lock before any case body work.
+	// Map reads guarded against (*Conn).close()
 	c.responseChanMutex.RLock()
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
