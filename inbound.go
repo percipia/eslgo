@@ -61,19 +61,24 @@ func (opts InboundOptions) Dial(address string) (*Conn, error) {
 	authCtx, cancel := context.WithTimeout(connection.runningContext, opts.AuthTimeout)
 	defer cancel()
 
+	// Map reads guarded against (*Conn).close()
+	connection.responseChanMutex.RLock()
 	select {
 	case _, ok := <-connection.responseChannels[TypeAuthRequest]:
+		connection.responseChanMutex.RUnlock()
 		if !ok {
 			notifyPreAuthDisconnect()
 			return nil, fmt.Errorf("connection closed before auth request")
 		}
 	case response, ok := <-connection.responseChannels[TypeDisconnect]:
+		connection.responseChanMutex.RUnlock()
 		notifyPreAuthDisconnect()
 		if ok && response != nil {
 			return nil, fmt.Errorf("connection disconnected before auth request: %s", response.GetHeader("Error"))
 		}
 		return nil, fmt.Errorf("connection disconnected before auth request")
 	case <-authCtx.Done():
+		connection.responseChanMutex.RUnlock()
 		notifyPreAuthDisconnect()
 		return nil, authCtx.Err()
 	}
@@ -98,22 +103,29 @@ func (opts InboundOptions) Dial(address string) (*Conn, error) {
 }
 
 func (c *Conn) disconnectLoop(onDisconnect func()) {
+	// Map read guarded against (*Conn).close()
+	c.responseChanMutex.RLock()
 	select {
 	case <-c.responseChannels[TypeDisconnect]:
+		c.responseChanMutex.RUnlock()
 		c.Close()
 		if onDisconnect != nil {
 			onDisconnect()
 		}
 		return
 	case <-c.runningContext.Done():
+		c.responseChanMutex.RUnlock()
 		return
 	}
 }
 
 func (c *Conn) authLoop(auth command.Auth, authTimeout time.Duration) {
 	for {
+		// Map read guarded against (*Conn).close()
+		c.responseChanMutex.RLock()
 		select {
 		case <-c.responseChannels[TypeAuthRequest]:
+			c.responseChanMutex.RUnlock()
 			authCtx, cancel := context.WithTimeout(c.runningContext, authTimeout)
 			err := c.doAuth(authCtx, auth)
 			cancel()
@@ -126,6 +138,7 @@ func (c *Conn) authLoop(auth command.Auth, authTimeout time.Duration) {
 				c.logger.Info("Successfully authenticated %s\n", c.conn.RemoteAddr())
 			}
 		case <-c.runningContext.Done():
+			c.responseChanMutex.RUnlock()
 			return
 		}
 	}

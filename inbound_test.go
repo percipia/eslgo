@@ -11,9 +11,11 @@
 package eslgo
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -99,4 +101,87 @@ func listenTCP(t *testing.T) net.Listener {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	return listener
+}
+
+func TestInboundDial_CloseWhileWaitingForAuthRequest(t *testing.T) {
+	for i := 0; i < 25; i++ {
+		listener := listenTCP(t)
+
+		disconnected := make(chan struct{})
+		var once sync.Once
+		opts := DefaultInboundOptions
+		opts.AuthTimeout = 2 * time.Second
+		opts.Logger = NilLogger{}
+		opts.OnDisconnect = func() {
+			once.Do(func() { close(disconnected) })
+		}
+
+		go func() {
+			serverConn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			// Give Dial time to block in its pre-auth select before hanging
+			// up, so the disconnect message wakes that select instead of the
+			// auth timeout.
+			time.Sleep(10 * time.Millisecond)
+			serverConn.Close()
+		}()
+
+		conn, err := opts.Dial(listener.Addr().String())
+
+		assert.Nil(t, conn)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "before auth request")
+		assertOnDisconnect(t, disconnected)
+		listener.Close()
+	}
+}
+
+func TestInboundDial_CloseRightAfterSuccessfulAuth(t *testing.T) {
+	for i := 0; i < 25; i++ {
+		listener := listenTCP(t)
+
+		var serverDone sync.WaitGroup
+		serverDone.Add(1)
+		go func() {
+			defer serverDone.Done()
+			serverConn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			defer serverConn.Close()
+			if _, err := serverConn.Write([]byte("Content-Type: auth/request\r\n\r\n")); err != nil {
+				return
+			}
+			reader := bufio.NewReader(serverConn)
+			if _, err := reader.ReadString('\n'); err != nil {
+				// Client gave up before answering the auth request.
+				return
+			}
+			if _, err := serverConn.Write([]byte("Content-Type: command/reply\r\nReply-Text: +OK accepted\r\n\r\n")); err != nil {
+				return
+			}
+			// Block until the client hangs up so every iteration starts from
+			// a fully torn down connection.
+			_, _ = reader.ReadString('\n')
+		}()
+
+		opts := DefaultInboundOptions
+		opts.AuthTimeout = 2 * time.Second
+		opts.Logger = NilLogger{}
+		conn, err := opts.Dial(listener.Addr().String())
+		require.NoError(t, err)
+		require.NotNil(t, conn)
+
+		// Park the loop goroutines in their select statements, then close the
+		// connection: the map reads inside those selects must not race with
+		// the map deletes performed by (*Conn).close.
+		time.Sleep(10 * time.Millisecond)
+		conn.Close()
+
+		serverDone.Wait()
+		listener.Close()
+		time.Sleep(5 * time.Millisecond)
+	}
 }
