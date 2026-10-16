@@ -20,13 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOutbound_CloseWhileConnectionIsServed hammers the window where the
-// dummyLoop goroutine evaluates its responseChannels map lookups while
-// (*Conn).close deletes those entries. Run with -race: without the read-side
-// RLocks this reliably reports a DATA RACE between the select in dummyLoop
-// and the delete in close. Each iteration also proves the outbound happy
-// path still works: the connect handshake completes against a loopback fake
-// and the connection is then torn down cleanly.
 func TestOutbound_CloseWhileConnectionIsServed(t *testing.T) {
 	for i := 0; i < 25; i++ {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
