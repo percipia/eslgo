@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net"
 	"net/textproto"
+	"os"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ type Conn struct {
 	conn                 net.Conn
 	reader               *bufio.Reader
 	header               *textproto.Reader
+	readKeepalive        time.Duration // 0 disables the read liveness deadline (see Options.ReadKeepalive)
 	writeLock            sync.Mutex
 	runningContext       context.Context
 	stopFunc             func()
@@ -44,9 +46,10 @@ type Conn struct {
 
 // Options - Generic options for an ESL connection, either inbound or outbound
 type Options struct {
-	Context     context.Context // This specifies the base running context for the connection. If this context expires all connections will be terminated.
-	Logger      Logger          // This specifies the logger to be used for any library internal messages. Can be set to nil to suppress everything.
-	ExitTimeout time.Duration   // How long should we wait for FreeSWITCH to respond to our "exit" command. 5 seconds is a sane default.
+	Context       context.Context // This specifies the base running context for the connection. If this context expires all connections will be terminated.
+	Logger        Logger          // This specifies the logger to be used for any library internal messages. Can be set to nil to suppress everything.
+	ExitTimeout   time.Duration   // How long should we wait for FreeSWITCH to respond to our "exit" command. 5 seconds is a sane default.
+	ReadKeepalive time.Duration   // Read deadline for liveness: if no message arrives within this window the connection is treated as dead (half-open/black-holed link where the OS never delivers FIN/RST). 0 disables. Refreshed after every received message.
 }
 
 // DefaultOptions - The default options used for creating the connection
@@ -70,9 +73,10 @@ func newConnection(c net.Conn, outbound bool, opts Options) *Conn {
 	runningContext, stop := context.WithCancel(opts.Context)
 
 	instance := &Conn{
-		conn:   c,
-		reader: reader,
-		header: header,
+		conn:          c,
+		reader:        reader,
+		header:        header,
+		readKeepalive: opts.ReadKeepalive,
 		responseChannels: map[string]chan *RawResponse{
 			TypeReply:       make(chan *RawResponse),
 			TypeAPIResponse: make(chan *RawResponse),
@@ -286,9 +290,20 @@ func (c *Conn) eventLoop() {
 }
 
 func (c *Conn) receiveLoop() {
+	if c.readKeepalive > 0 {
+		_ = c.conn.SetReadDeadline(time.Now().Add(c.readKeepalive))
+	}
 	for c.runningContext.Err() == nil {
 		err := c.doMessage()
 		if err != nil {
+			// Half-open dead link: no FIN/RST is ever delivered by the OS,
+			// so without a read deadline this loop would block forever
+			// and the connection would go zombie (no events, no
+			// onDisconnect). The deadline expiry is proof of death — it
+			// flows into the all-errors disconnect signal below.
+			if isReadDeadlineExceeded(err) {
+				c.logger.Warn("Read keepalive deadline (%s) exceeded, treating connection as dead\n", c.readKeepalive)
+			}
 			c.logger.Warn("Error receiving message: %s\n", err.Error())
 			c.logger.Warn("Connection error, stopping receive loop\n")
 			c.responseChanMutex.RLock()
@@ -308,7 +323,23 @@ func (c *Conn) receiveLoop() {
 			}
 			break
 		}
+		if c.readKeepalive > 0 {
+			// Refresh after every received message: any traffic (heartbeat,
+			// events, replies) proves the read path is alive.
+			_ = c.conn.SetReadDeadline(time.Now().Add(c.readKeepalive))
+		}
 	}
+}
+
+// isReadDeadlineExceeded reports whether err is a read timeout (net deadline),
+// possibly wrapped by bufio/textproto. Used for diagnostics only — every
+// receiveLoop error already signals disconnect.
+func isReadDeadlineExceeded(err error) bool {
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 func (c *Conn) doMessage() error {

@@ -116,3 +116,105 @@ func TestReceiveLoop_NoRaceOnEOF(t *testing.T) {
 
 	wg.Wait()
 }
+
+// TestReceiveLoop_ReadKeepaliveDeadLink verifies that the read keepalive
+// deadline detects a half-open dead connection: the server keeps the socket
+// open but stops sending (the black-holed form where the OS never delivers
+// FIN/RST). Once ReadKeepalive expires, receiveLoop must exit and trigger
+// onDisconnect. Without a deadline, receiveLoop would block forever and the
+// connection would go zombie (no events, no onDisconnect).
+func TestReceiveLoop_ReadKeepaliveDeadLink(t *testing.T) {
+	server, client := net.Pipe()
+
+	disconnected := make(chan struct{})
+	opts := DefaultInboundOptions
+	opts.Password = "ClueCon"
+	opts.ReadKeepalive = 200 * time.Millisecond
+	opts.OnDisconnect = func() {
+		close(disconnected)
+	}
+
+	connection := newConnection(client, false, opts.Options)
+	go connection.disconnectLoop(opts.OnDisconnect)
+
+	// Put the connection into its normal state
+	_, err := server.Write([]byte("Content-Type: auth/request\r\n\r\n"))
+	assert.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+
+	// The server goes silent: no close, no more bytes. After 200ms the read
+	// keepalive expires, the read fails with a deadline exceeded, and the
+	// connection is declared dead.
+
+	select {
+	case <-disconnected:
+		// Expected: keepalive deadline detected the dead link, onDisconnect fired
+	case <-time.After(3 * time.Second):
+		t.Fatal("silently open connection was not declared dead within the read keepalive window (onDisconnect not triggered)")
+	}
+
+	connection.Close()
+	server.Close()
+	client.Close()
+}
+
+// TestReceiveLoop_ReadKeepaliveRefreshOnTraffic verifies that the deadline is
+// refreshed after every received message: the server sends data every 100ms
+// (each frame well within the 300ms keepalive window), so the connection must
+// stay alive for the full second and never be killed spuriously.
+func TestReceiveLoop_ReadKeepaliveRefreshOnTraffic(t *testing.T) {
+	server, client := net.Pipe()
+
+	opts := DefaultInboundOptions
+	opts.Password = "ClueCon"
+	opts.ReadKeepalive = 300 * time.Millisecond
+	fired := make(chan struct{})
+	opts.OnDisconnect = func() {
+		select {
+		case <-fired:
+		default:
+			close(fired)
+		}
+	}
+
+	connection := newConnection(client, false, opts.Options)
+	go connection.disconnectLoop(opts.OnDisconnect)
+
+	_, err := server.Write([]byte("Content-Type: auth/request\r\n\r\n"))
+	assert.NoError(t, err)
+
+	// Sustained light traffic for 1s (one text/event-plain frame every 100ms,
+	// each within the 300ms keepalive window). Event frames are used instead
+	// of auth/request on purpose: eventLoop keeps consuming TypeEventPlain
+	// (mirroring a production event stream), while auth/request is consumed
+	// by authLoop, which is not started here -- once its channel buffer fills,
+	// doMessage would block and pollute the timing.
+	eventFrame := []byte("Content-Type: text/event-plain\r\nContent-Length: 25\r\n\r\nEvent-Name: HEARTBEAT\r\n\r\n")
+	for i := 0; i < 10; i++ {
+		time.Sleep(100 * time.Millisecond)
+		_, err := server.Write(eventFrame)
+		assert.NoError(t, err)
+	}
+
+	select {
+	case <-fired:
+		t.Fatal("read keepalive killed a connection with live traffic (deadline should have been refreshed)")
+	default:
+		// Expected: connection still alive
+	}
+
+	connection.Close()
+	server.Close()
+	client.Close()
+}
+
+// TestReadKeepaliveDisabledByDefault guards the opt-in contract: both default
+// option sets leave ReadKeepalive at zero (disabled), so this feature never
+// changes behavior for existing callers. Enabling the read deadline is an
+// explicit, per-connection decision.
+func TestReadKeepaliveDisabledByDefault(t *testing.T) {
+	assert.Equal(t, time.Duration(0), DefaultOptions.ReadKeepalive,
+		"generic defaults must keep the read keepalive disabled (opt-in)")
+	assert.Equal(t, time.Duration(0), DefaultInboundOptions.ReadKeepalive,
+		"inbound defaults must keep the read keepalive disabled (opt-in); enable it explicitly per connection")
+}
